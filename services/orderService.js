@@ -258,7 +258,6 @@ const createCardOrder = async (session) => {
     const user = await User.findOne({ email: session.customer_email });
     if (!user) return;
 
-    // 3) Create order with default paymentMethodType card
     const order = await Order.create({
         user: user._id,
         cartItems: cart.cartItems,
@@ -269,7 +268,6 @@ const createCardOrder = async (session) => {
         paymentMethodType: 'card',
     });
 
-    // 4) After creating order, decrement product quantity, increment product sold
     if (order) {
         const bulkOption = cart.cartItems.map((item) => ({
             updateOne: {
@@ -279,7 +277,6 @@ const createCardOrder = async (session) => {
         }));
         await Product.bulkWrite(bulkOption, {});
 
-        // 5) Clear cart depend on cartId
         await Cart.findByIdAndDelete(cartId);
     }
 };
@@ -290,7 +287,7 @@ export const webhookCheckout = asyncHandler(async (req, res, next) => {
     let event;
 
     try {
-        event = stripe.webhooks.constructEvent(
+        event = Stripe.webhooks.constructEvent(
             req.body,
             sig,
             process.env.STRIPE_WEBHOOK_KEY
