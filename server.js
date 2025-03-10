@@ -12,6 +12,7 @@ import dbConnection from './utils/db.js';
 import ApiError from './utils/apiError.js';
 import errorHandler from './middlewares/errorHandlerMiddleware.js';
 import mountRoutes from './routes/index.js';
+import { webhookCheckout } from './services/orderService.js';
 
 process.on('uncaughtException', (err) => {
     console.error(`UncaughtException Error: ${err.name} | ${err.message}`);
@@ -25,6 +26,9 @@ const app = express();
 app.use(cors());
 app.options('*', cors());
 app.use(compression());
+
+app.post('/webhook-checkout', express.raw({ type: 'application/json' }), webhookCheckout)
+
 app.use(express.json({ limit: '20kb' }));
 
 app.use(mongoSanitize());

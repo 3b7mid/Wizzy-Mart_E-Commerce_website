@@ -5,6 +5,7 @@ import { sanitizeOrder } from '../utils/sanitizeData.js';
 import Stripe from 'stripe';
 import Product from '../models/productModel.js';
 import Cart from '../models/cartModel.js';
+import User from '../models/userModel.js';
 import Order from '../models/orderModel.js';
 
 const calculateTotalOrderPrice = (cart) => {
@@ -215,26 +216,29 @@ export const checkoutSession = asyncHandler(async (req, res, next) => {
         return next(new ApiError(`There is no such cart with ID: ${cartId}`, 404));
     }
 
-    const line_items = cart.cartItems.map(item => ({
-        price_data: {
-            currency: 'egp',
-            unit_amount: Math.round(Number(item.price) * 100) + shippingPrice,
-            product_data: {
-                name: item.product.title
-            },
-        },
-        quantity: Number(item.amount) || 1,
-    }));
-    
+    const cartPrice = cart.totalPriceAfterDiscount || cart.totalCartPrice;
+    const totalOrderPrice = cartPrice + shippingPrice;
+
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
-        line_items,
+        line_items: [
+            {
+                price_data: {
+                    currency: 'egp',
+                    product_data: {
+                        name: 'Order from ' + req.user.name
+                    },
+                    unit_amount: Math.round(totalOrderPrice * 100)
+                },
+                quantity: 1
+            }
+        ],
         mode: 'payment',
         success_url: `${req.protocol}://${req.get('host')}/orders`,
         cancel_url: `${req.protocol}://${req.get('host')}/cart`,
-        client_reference_id: cartId,
         customer_email: req.user.email,
+        client_reference_id: cartId,
         metadata: req.body.shippingAddress
     });
 
@@ -242,4 +246,62 @@ export const checkoutSession = asyncHandler(async (req, res, next) => {
         status: 'success',
         session
     });
+});
+
+const createCardOrder = async (session) => {
+    const cartId = session.client_reference_id;
+    const shippingAddress = session.metadata;
+    const orderPrice = session.amount_total / 100;
+
+    const cart = await Cart.findById(cartId);
+    if (!cart) return;
+    const user = await User.findOne({ email: session.customer_email });
+    if (!user) return;
+
+    // 3) Create order with default paymentMethodType card
+    const order = await Order.create({
+        user: user._id,
+        cartItems: cart.cartItems,
+        shippingAddress,
+        totalOrderPrice: orderPrice,
+        isPaid: true,
+        paidAt: Date.now(),
+        paymentMethodType: 'card',
+    });
+
+    // 4) After creating order, decrement product quantity, increment product sold
+    if (order) {
+        const bulkOption = cart.cartItems.map((item) => ({
+            updateOne: {
+                filter: { _id: item.product },
+                update: { $inc: { quantity: -item.amount, sold: +item.amount } },
+            },
+        }));
+        await Product.bulkWrite(bulkOption, {});
+
+        // 5) Clear cart depend on cartId
+        await Cart.findByIdAndDelete(cartId);
+    }
+};
+
+export const webhookCheckout = asyncHandler(async (req, res, next) => {
+    const sig = req.headers['stripe-signature'];
+
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(
+            req.body,
+            sig,
+            process.env.STRIPE_WEBHOOK_KEY
+        );
+    } catch (err) {
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === 'checkout.session.completed') {
+        await createCardOrder(event.data.object);
+    }
+
+    res.status(200).json({ received: true });
 });
