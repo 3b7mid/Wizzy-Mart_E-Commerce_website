@@ -28,7 +28,7 @@ export const removeCartItemValidator = [
     check('itemId')
         .isMongoId()
         .withMessage('Invalid cart item ID format'),
-    
+
     validatorMiddleware
 ];
 
@@ -37,6 +37,16 @@ export const getCartValidator = [
         .optional()
         .isMongoId()
         .withMessage('Invalid user ID format'),
-    
+
+    validatorMiddleware
+];
+
+export const applyCouponValidator = [
+    check('coupon')
+        .notEmpty()
+        .withMessage('Coupon code is required')
+        .isLength({ min: 3, max: 20 })
+        .withMessage('Coupon code must be between 3 and 20 characters'),
+
     validatorMiddleware
 ];

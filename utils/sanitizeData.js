@@ -1,6 +1,6 @@
 export const sanitizeUser = (user) => {
     return {
-        _id: user._id,
+        id: user._id,
         name: user.name,
         email: user.email,
         profileImage: user.profileImage,
@@ -11,7 +11,7 @@ export const sanitizeUser = (user) => {
 
 export const sanitizeCategory = (category) => {
     return {
-        _id: category._id,
+        id: category._id,
         name: category.name,
         categoryImage: category.categoryImage
     };
@@ -19,7 +19,7 @@ export const sanitizeCategory = (category) => {
 
 export const sanitizeSubCategory = (subcategory) => {
     return {
-        _id: subcategory._id,
+        id: subcategory._id,
         name: subcategory.name,
         category: subcategory.category
     };
@@ -27,7 +27,7 @@ export const sanitizeSubCategory = (subcategory) => {
 
 export const sanitizeBrand = (brand) => {
     return {
-        _id: brand._id,
+        id: brand._id,
         name: brand.name,
         category: brand.category,
         subCategories: brand.subCategories
@@ -36,7 +36,7 @@ export const sanitizeBrand = (brand) => {
 
 export const sanitizeProduct = (product) => {
     return {
-        _id: product._id,
+        id: product._id,
         title: product.title,
         quantity: product.quantity,
         sold: product.sold,
@@ -56,7 +56,7 @@ export const sanitizeProduct = (product) => {
 
 export const sanitizeReview = (review) => {
     return {
-        _id: review._id,
+        id: review._id,
         title: review.title,
         ratings: review.ratings,
         user: review.user,
@@ -66,7 +66,7 @@ export const sanitizeReview = (review) => {
 
 export const sanitizeCart = (cart) => {
     return {
-        _id: cart._id,
+        id: cart._id,
         numOfCartItems: cart.numOfCartItems,
         user: cart.user,
         cartItems: cart.cartItems,
@@ -75,9 +75,18 @@ export const sanitizeCart = (cart) => {
     };
 };
 
+export const sanitizeCoupon = (coupon) => {
+    return {
+        id: coupon._id,
+        code: coupon.code,
+        expiresAt: coupon.expiresAt,
+        discount: coupon.discount
+    };
+};
+
 export const sanitizeOrder = (order) => {
     return {
-        _id: order._id,
+        id: order._id,
         user: order.user,
         cartItems: order.cartItems,
         shippingAddress: order.shippingAddress,
@@ -91,5 +100,12 @@ export const sanitizeOrder = (order) => {
         totalPriceAfterDiscount: order.totalPriceAfterDiscount || order.totalOrderPrice,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt
+    };
+};
+
+export const sanitizeshippingPrice = (shipPrice) => {
+    return {
+        id: shipPrice._id,
+        shippingPrice: shipPrice.shippingPrice
     };
 };

@@ -7,33 +7,78 @@ import slugify from 'slugify';
 import { createToken } from '../utils/createToken.js';
 import ApiError from '../utils/apiError.js';
 import { sanitizeUser } from '../utils/sanitizeData.js';
-import { sendPasswordResetEmail } from '../utils/sendEmails/emails.js';
+import { sendPasswordResetEmail, sendVerificationEmail } from '../utils/sendEmails/emails.js';
 import User from '../models/userModel.js';
 
 
 // @desc    Signup
-// @route   GET /api/auth/signup
+// @route   POST /api/auth/signup
 // @access  Public
 export const signup = asyncHandler(async (req, res, next) => {
+
+    const verificationCode = crypto.randomInt(100000, 999999).toString();
+    const verificationCodeExpiresAt = Date.now() + 60 * 60 * 1000;
+
     const user = await User.create({
         name: req.body.name,
         slug: slugify(req.body.name),
         email: req.body.email,
         password: req.body.password,
-        profileImage: req.body.profileImage
+        profileImage: req.body.profileImage,
+        isVerified: false,
+        verificationCode,
+        verificationCodeExpiresAt
     });
 
     if (!user) {
         return next(new ApiError('User creation failed', 500));
     }
 
-    const token = createToken(user._id, res);
+    try {
+        await sendVerificationEmail(user.email, user.name, verificationCode);
+    } catch (error) {
+        user.passwordResetCode = undefined;
+        user.passwordResetExpiresAt = undefined;
+        user.passwordResetVerified = undefined;
+        await user.save();
+        return next(new ApiError('Failed to send verification code email. Please try again.', 500));
+    }
 
-    res.status(201).json({ data: sanitizeUser(user), token });
+    res.status(201).json({
+        status: 'success',
+        message: 'Verification code sent to your email. Please verify your account'
+    });
+});
+// @desc    Verify Email
+// @route   POST /api/auth/verify-email
+// @access  Public
+export const verifyEmail = asyncHandler(async (req, res, next) => {
+    const { email, verificationCode } = req.body;
+
+    const user = await User.findOne({
+        email,
+        verificationCode,
+        verificationCodeExpiresAt: { $gt: Date.now() }
+    });
+
+    if (!user) {
+        return next(new ApiError('Invalid or expired verification code', 400));
+    }
+    
+    user.isVerified = true;
+    user.verificationCode = undefined;
+    user.verificationCodeExpiresAt = undefined;
+    await user.save();
+
+    res.status(200).json({ 
+        status: 'success',
+        message: 'Email verified successfully. You can now log in.',
+    });
 });
 
+
 // @desc    Login
-// @route   GET /api/auth/login
+// @route   POST /api/auth/login
 // @access  Public
 export const login = asyncHandler(async (req, res, next) => {
 

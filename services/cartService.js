@@ -2,8 +2,8 @@ import asyncHandler from 'express-async-handler';
 import ApiError from '../utils/apiError.js';
 import { sanitizeCart } from '../utils/sanitizeData.js';
 import Product from '../models/productModel.js';
+import Coupon from '../models/couponModel.js';
 import Cart from '../models/cartModel.js';
-import { response } from 'express';
 
 const calcTotalCartPrice = (cart) => {
     let totalPrice = 0;
@@ -63,7 +63,7 @@ export const getLoggedUserCart = asyncHandler(async (req, res, next) => {
     if (!cart) {
         return next(new ApiError(`There is no cart for this user id: $req.user._id`, 404));
     }
-    
+
     res.status(200).json({
         status: 'success',
         numOfCartItems: cart.cartItems.length,
@@ -78,7 +78,7 @@ export const removeSpecificCartItem = asyncHandler(async (req, res, next) => {
     const cart = await Cart.findOneAndUpdate(
         { user: req.user._id },
         {
-            $pull: { cartItems: { _id: req.params.itemId }}
+            $pull: { cartItems: { _id: req.params.itemId } }
         },
         { new: true }
     );
@@ -100,4 +100,32 @@ export const clearCart = asyncHandler(async (req, res, next) => {
     await Cart.findOneAndDelete({ user: req.user._id });
     res.status(204).end();
     next();
+});
+
+// @desc    Apply coupon on logged user cart
+// @route   PUT /api/v1/cart/applyCoupon
+// @access  Private/User
+export const applyCoupon = asyncHandler(async (req, res, next) => {
+    const coupon = await Coupon.findOne({
+        code: req.body.coupon,
+        expiresAt: { $gt: Date.now() }
+    });
+    if (!coupon) {
+        return next(new ApiError(`Coupon is invalid or expired`, 400));
+    }
+
+    const cart = await Cart.findOne({ user: req.user._id });
+    if (!cart) {
+        return next(new ApiError('Cart not found', 404));
+    }
+
+    cart.totalPriceAfterDiscount = (cart.totalCartPrice * (1 - coupon.discount / 100)).toFixed(2);
+
+    await cart.save();
+
+    res.status(200).json({
+        status: 'success',
+        numOfCartItems: cart.cartItems.length,
+        data: sanitizeCart(cart),
+    });
 });

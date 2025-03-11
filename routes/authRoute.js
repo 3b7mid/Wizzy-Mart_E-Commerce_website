@@ -1,5 +1,5 @@
 import express from "express";
-import { signup, login, logout, forgetPassword, verifyResetToken, resetPassword } from '../services/authService.js';
+import { signup, verifyEmail, login, logout, forgetPassword, verifyResetToken, resetPassword } from '../services/authService.js';
 import { signupValidator, loginValidator } from '../middlewares/authMiddleware.js';
 import { resizeUserImage } from "../middlewares/cloudinaryMiddleware.js";
 import { uploadSingleImage } from "../utils/multer.js";
@@ -9,8 +9,8 @@ const router = express.Router();
 router.route('/signup')
     .post(uploadSingleImage('profileImage'), resizeUserImage, signupValidator, signup);
 
-// router.route('/verify-email')
-//     .post(verifyEmail)        
+router.route('/verify-email')
+    .post(verifyEmail)        
 
 router.route('/login')
     .post(loginValidator, login);

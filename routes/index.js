@@ -7,6 +7,7 @@ import prodcutRoute from './productRoute.js';
 import reviewRoute from './reviewRoute.js';
 import cartRoute from './cartRoute.js';
 import orderRoute from './orderRoute.js';
+import couponRoute from './couponRoute.js';
 
 const mountRoutes = (app) => {
     app.use('/api/auth', authRoute);
@@ -16,7 +17,8 @@ const mountRoutes = (app) => {
     app.use('/api/brands', brandRoute);
     app.use('/api/products', prodcutRoute);
     app.use('/api/reviews', reviewRoute);
-    app.use('/api/cart', cartRoute);
+    app.use('/api/carts', cartRoute);
+    app.use('/api/coupons', couponRoute);
     app.use('/api/orders', orderRoute);
     
 };

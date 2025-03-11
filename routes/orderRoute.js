@@ -1,6 +1,6 @@
 import express from 'express';
-import { createOrderValidator, deleteOrderValidator } from '../middlewares/orderMiddleware.js';
-import { createDirectOrder, createCashOrder, getAllUserOrders, getAllOrders, deleteOrder, checkoutSession } from '../services/orderService.js';
+import { checkoutSessionValidator, createOrderValidator, deleteOrderValidator, updateOrderValidator, updateShippingPriceValidator } from '../middlewares/orderMiddleware.js';
+import { createDirectOrder, createCashOrder, getAllUserOrders, getAllOrders, deleteOrder, checkoutSession, updateOrderToPaid, updateOrderToDelivered, updateGlobalShippingPrice, updateShippingPrice } from '../services/orderService.js';
 import { protect, allowedTo } from '../services/authService.js';
 
 const router = express.Router();
@@ -9,7 +9,7 @@ router.route('/direct-order')
     .post(protect, allowedTo('user'), createOrderValidator, createDirectOrder);
 
 router.route('/:cartId')
-    .post(protect, allowedTo('user'), createCashOrder);
+    .post(protect, allowedTo('user'), createOrderValidator, createCashOrder);
 
 router.route('/my-orders')
     .get(protect, allowedTo('user'), getAllUserOrders);
@@ -17,10 +17,22 @@ router.route('/my-orders')
 router.route('/')
     .get(protect, allowedTo('admin'), getAllOrders);
 
+router.route('/global-shipping')
+    .put(protect, allowedTo('admin'), updateShippingPriceValidator, updateGlobalShippingPrice);
+
+router.route('/:id/shipping')
+    .put(protect, allowedTo('admin'), updateShippingPriceValidator, updateShippingPrice);
+
+router.route('/:orderId/pay')
+    .put(protect, allowedTo('admin'), updateOrderValidator, updateOrderToPaid);
+
+router.route('/:orderId/deliver')
+    .put(protect, allowedTo('admin'), updateOrderValidator, updateOrderToDelivered)
+
 router.route('/:orderId')
     .delete(protect, allowedTo('user', 'admin'), deleteOrderValidator, deleteOrder);
 
 router.route('/checkout-session/:cartId')
-    .get(protect, allowedTo('user'), checkoutSession);
+    .get(protect, allowedTo('user'), checkoutSessionValidator, checkoutSession);
 
 export default router;

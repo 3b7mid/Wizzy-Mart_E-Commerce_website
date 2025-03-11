@@ -1,11 +1,12 @@
 import asyncHandler from 'express-async-handler';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
-import { sanitizeOrder } from '../utils/sanitizeData.js';
+import { sanitizeOrder, sanitizeshippingPrice } from '../utils/sanitizeData.js';
 import Stripe from 'stripe';
 import Product from '../models/productModel.js';
 import Cart from '../models/cartModel.js';
 import User from '../models/userModel.js';
+import globalShippingPrice from '../models/shippingPriceModel.js';
 import Order from '../models/orderModel.js';
 
 const calculateTotalOrderPrice = (cart) => {
@@ -56,6 +57,16 @@ export const createDirectOrder = asyncHandler(async (req, res, next) => {
     }
 
     let shippingPrice = 0;
+    try {
+        const shipPrice = await globalShippingPrice.findOne();
+        if (shipPrice && shipPrice.shippingPrice) {
+            shippingPrice = shipPrice.shippingPrice;
+        }
+    } catch (error) {
+        return next(new ApiError('Error fetching shipping price', 500));
+    }
+
+    totalOrderPrice += shippingPrice;
 
     const newOrder = await Order.create({
         user: req.user._id,
@@ -94,7 +105,8 @@ export const createDirectOrder = asyncHandler(async (req, res, next) => {
 // @access  Protected/User
 export const createCashOrder = asyncHandler(async (req, res, next) => {
     const { cartId } = req.params;
-    const shippingPrice = 0;
+    const shipPrice = await globalShippingPrice.findOne();
+    const shippingPrice = shipPrice ? shipPrice.shippingPrice : 0;
     const cart = await Cart.findById(cartId);
     if (!cart) {
         return next(new ApiError(`There is no such cart with ID: ${cartId}`, 404));
@@ -173,6 +185,48 @@ export const getAllUserOrders = asyncHandler(async (req, res, next) => {
     });
 });
 
+// @desc    Update order paid status to paid
+// @route   PUT /api/orders/:id/pay
+// @access  Protected/Admin
+export const updateOrderToPaid = asyncHandler(async (req, res, next) => {
+    const { orderId } = req.params;
+    const order = await Order.findById(orderId);
+    if (!order) {
+        return next(new ApiError(`There is no such a order with this ID: ${orderId}`, 404));
+    }
+
+    order.isPaid = true;
+    order.paidAt = Date.now();
+
+    const updateOrder = await order.save();
+
+    res.status(200).json({
+        status: 'success',
+        data: sanitizeOrder(updateOrder)
+    });
+});
+
+// @desc    Update order delivered status
+// @route   PUT /api/orders/:id/deliver
+// @access  Protected/Admin
+export const updateOrderToDelivered = asyncHandler(async (req, res, next) => {
+    const { orderId } = req.params;
+    const order = await Order.findById(orderId);
+    if (!order) {
+        return next(new ApiError(`There is no such a order with this ID: ${orderId}`, 404));
+    }
+
+    order.isDelivered = true;
+    order.deliveredAt = Date.now();
+
+    const updateOrder = await order.save();
+
+    res.status(200).json({
+        status: 'success',
+        data: sanitizeOrder(updateOrder)
+    });
+});
+
 // @desc    Delete order
 // @route   DELETE api/orders/id
 // @access  Protect Admin/User
@@ -208,7 +262,8 @@ export const deleteOrder = asyncHandler(async (req, res, next) => {
 // @route   DELETE api/orders/checkout-session/cartId
 // @access  Protect/User
 export const checkoutSession = asyncHandler(async (req, res, next) => {
-    const shippingPrice = 0;
+    const shipPrice = await globalShippingPrice.findOne();
+    const shippingPrice = shipPrice ? shipPrice.shippingPrice : 0;
     const { cartId } = req.params;
 
     const cart = await Cart.findById(cartId).populate("cartItems.product")
@@ -281,6 +336,9 @@ const createCardOrder = async (session) => {
     }
 };
 
+// @desc    This webhook will run when stripe payment success paid
+// @route   POST /webhook-checkout
+// @access  Protected/User
 export const webhookCheckout = asyncHandler(async (req, res, next) => {
     const sig = req.headers['stripe-signature'];
 
@@ -301,4 +359,49 @@ export const webhookCheckout = asyncHandler(async (req, res, next) => {
     }
 
     res.status(200).json({ received: true });
+});
+
+// @desc    Update Global shipping Price
+// @route   PUT /api/global-shipping
+// @access  Protected/Admin
+export const updateGlobalShippingPrice = asyncHandler(async (req, res, next) => {
+    const { shippingPrice } = req.body;
+
+    let price = await globalShippingPrice.findOne();
+    if (!price) {
+        price = new globalShippingPrice({ shippingPrice });
+    }
+    else {
+        price.shippingPrice = shippingPrice;
+    }
+
+    await price.save();
+
+    res.status(200).json({
+        status: 'success',
+        data: sanitizeshippingPrice(price)
+    });
+});
+
+// @desc    Update Global shipping Price
+// @route   PUT /api/:id/shipping
+// @access  Protected/Admin
+export const updateShippingPrice = asyncHandler(async (req, res, next) => {
+    const { shippingPrice } = req.body;
+
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+        return next(new ApiError('Order not found', 404));
+    }
+
+    const updatedTotalOrderPrice = order.totalOrderPrice + (shippingPrice - order.shippingPrice);
+
+    order.shippingPrice = shippingPrice;
+    order.totalOrderPrice = updatedTotalOrderPrice;
+    await order.save();
+
+    res.status(200).json({
+        status: 'success',
+        data: sanitizeOrder(order)
+    });
 });
