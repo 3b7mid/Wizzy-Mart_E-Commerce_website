@@ -5,6 +5,8 @@ export const sanitizeUser = (user) => {
         email: user.email,
         profileImage: user.profileImage,
         role: user.role,
+        wishlist: user.wishlist,
+        addresses: user.addresses,
         active: user.active
     };
 };

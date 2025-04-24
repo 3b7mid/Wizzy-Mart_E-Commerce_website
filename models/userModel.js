@@ -1,4 +1,4 @@
-import mongoose, { trusted } from "mongoose";
+import mongoose from "mongoose";
 import bcrypt from 'bcrypt';
 
 const userSchema = new mongoose.Schema(
@@ -29,6 +29,22 @@ const userSchema = new mongoose.Schema(
             enum: ['user', 'admin'],
             default: 'user'
         },
+        wishlist: [
+            {
+                type : mongoose.Schema.Types.ObjectId,
+                ref : 'Product'
+            }
+        ],
+        addresses: [
+            {
+                id: { type: mongoose.Schema.Types.ObjectId },
+                alias: String,
+                details: String,
+                phone: String,
+                city: String,
+                postalCode: String
+            }
+        ],
         active: {
             type: Boolean,
             default: true

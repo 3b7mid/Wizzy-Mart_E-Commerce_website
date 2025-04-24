@@ -49,6 +49,7 @@ export const signup = asyncHandler(async (req, res, next) => {
         message: 'Verification code sent to your email. Please verify your account'
     });
 });
+
 // @desc    Verify Email
 // @route   POST /api/auth/verify-email
 // @access  Public
@@ -64,18 +65,17 @@ export const verifyEmail = asyncHandler(async (req, res, next) => {
     if (!user) {
         return next(new ApiError('Invalid or expired verification code', 400));
     }
-    
+
     user.isVerified = true;
     user.verificationCode = undefined;
     user.verificationCodeExpiresAt = undefined;
     await user.save();
 
-    res.status(200).json({ 
+    res.status(200).json({
         status: 'success',
         message: 'Email verified successfully. You can now log in.',
     });
 });
-
 
 // @desc    Login
 // @route   POST /api/auth/login

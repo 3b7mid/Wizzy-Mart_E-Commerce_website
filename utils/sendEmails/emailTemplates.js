@@ -19,7 +19,7 @@ export const PASSWORD_RESET_REQUEST_TEMPLATE = `
             <div class="container">
                 <h2>Password Reset Request</h2>
                 <p>Hi <b>{username}</b>,</p>
-                <p>We received a request to reset your password on your Azir Account.</p>
+                <p>We received a request to reset your password on your Wizzy Mart Account.</p>
                 <p>Enter this code to complete the reset.</p>
                 <p>{resetCode}<p>
                 <p><b>⚠️ Note:</b> This link will expire in <b>10 minutes</b> for security reasons.</p>
@@ -52,7 +52,7 @@ export const EMAIL_VERIFICATION_TEMPLATE = `
         <div class="container">
             <h2>Email Verification</h2>
             <p>Hi <b>{username}</b>,</p>
-            <p>Thank you for registering with Azir E-commerce.</p>
+            <p>Thank you for registering with Wizzy Mart.</p>
             <p>Please use the verification code below to complete your registration:</p>
             <p class="code">{verificationCode}</p>
             <p><b>⚠️ Note:</b> This code is valid for <b>1 hour</b>.</p>

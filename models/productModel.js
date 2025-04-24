@@ -5,7 +5,6 @@ const productSchema = mongoose.Schema(
         title: {
             type: String,
             trim: true,
-            unique: [true, 'Category must be unique'],
         },
         slug: {
             type: String,
