@@ -5,14 +5,13 @@
   "type": "module",
   "scripts": {
     "start:dev": "nodemon server.js",
-    "start:prod": "NODE_ENV=production node server.js",
-    "build": "echo 'No build step needed' && exit 0"
+    "start:prod": "NODE_ENV=production node server.js"
   },
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/3b7mid/Wizzy-Mart_E-Commerce_website"
   },
-  "author": "Youssef Abdelhamid  | Youssef Mohmoud",
+  "author": "Youssef Abdelhamid",
   "license": "ISC",
   "description": "",
   "dependencies": {
@@ -39,7 +38,7 @@
     "stripe": "^17.7.0",
     "uuid": "^11.0.5",
     "validator": "^13.12.0",
-    "xss-clean": "^0.1.4"
+    "xss": "^1.0.15"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

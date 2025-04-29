@@ -1,7 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
-import cloudinary from '../utils/cloudinary.js';
+import cloudinary from '../config/cloudinary.js';
 import ApiError from '../utils/apiError.js';
 
 const uploadToCloudinary = (buffer, filename, folder, format = 'jpeg', quality = 'auto') => {

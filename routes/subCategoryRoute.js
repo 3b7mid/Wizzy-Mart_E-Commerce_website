@@ -1,7 +1,8 @@
 import express from 'express';
-import { createSubCategory, getSubCategories, getSubCategory, updateSubCategory, deleteSubCategory } from '../services/subCategoryService.js';
-import { createSubCategoryValidator, getSubCategoryValidator, updateSubCategoryValidator, deleteSubCategoryValidator } from '../middlewares/subCategoryMiddleware.js';
 import { protect, allowedTo } from '../services/authService.js';
+import { createSubCategoryValidator, getSubCategoryValidator, updateSubCategoryValidator, deleteSubCategoryValidator } from '../validators/subCategoryValidator.js';
+import { createSubCategory, getSubCategories, getSubCategory, updateSubCategory, deleteSubCategory } from '../services/subCategoryService.js';
+
 const router = express.Router();
 
 router.route('/')

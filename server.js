@@ -6,11 +6,11 @@ import cors from 'cors';
 import hpp from 'hpp';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
-import xss from 'xss-clean';
+import sanitizeMiddleware from './middleware/sanitizeMiddleware.js';
 
-import dbConnection from './utils/db.js';
+import dbConnection from './config/db.js';
 import ApiError from './utils/apiError.js';
-import errorHandler from './middlewares/errorHandlerMiddleware.js';
+import errorHandler from './middleware/errorHandlerMiddleware.js';
 import mountRoutes from './routes/index.js';
 import { webhookCheckout } from './services/orderService.js';
 
@@ -32,7 +32,7 @@ app.post('/webhook-checkout', express.raw({ type: 'application/json' }), webhook
 app.use(express.json({ limit: '20kb' }));
 
 app.use(mongoSanitize());
-app.use(xss());
+app.use(sanitizeMiddleware);
 app.use(hpp({
     whitelist: [
         'price',

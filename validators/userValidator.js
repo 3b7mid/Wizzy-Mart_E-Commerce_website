@@ -1,5 +1,5 @@
 import { check, body } from 'express-validator';
-import validatorMiddleware from './validatorMiddleware.js';
+import validatorMiddleware from '../middleware/validatorMiddleware.js';
 import slugify from 'slugify';
 import bcrypt from 'bcrypt';
 import User from '../models/userModel.js';

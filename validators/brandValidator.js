@@ -1,7 +1,7 @@
 import { check, body } from 'express-validator';
 import slugify from 'slugify';
-import validatorMiddleware from './validatorMiddleware.js';
-import AbiError from '../utils/apiError.js';
+import validatorMiddleware from '../middleware/validatorMiddleware.js';
+import ApiError from '../utils/apiError.js';
 import SubCategory from '../models/subCategoryModel.js';
 import Category from '../models/categoryModel.js';
 
@@ -32,7 +32,7 @@ export const createBrandValidator = [
         .custom(async (categoryId) => {
             const category = await Category.findById(categoryId);
             if (!category) {
-                return Promise.reject(new AbiError('Category not found', 404));
+                return Promise.reject(new ApiError('Category not found', 404));
             }
         }),
 
@@ -44,7 +44,7 @@ export const createBrandValidator = [
             for (const subCategoryId of subCategories) {
                 const subCategory = await SubCategory.findById(subCategoryId);
                 if (!subCategory) {
-                    return Promise.reject(new AbiError(`SubCategory not found: ${subCategoryId}`, 404));
+                    return Promise.reject(new ApiError(`SubCategory not found: ${subCategoryId}`, 404));
                 }
             }
         }),

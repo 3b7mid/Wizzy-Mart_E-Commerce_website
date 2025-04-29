@@ -1,7 +1,7 @@
 import { check, body } from 'express-validator';
 import slugify from 'slugify';
-import validatorMiddleware from './validatorMiddleware.js';
-import AbiError from '../utils/apiError.js';
+import validatorMiddleware from '../middleware/validatorMiddleware.js';
+import ApiError from '../utils/apiError.js';
 import Category from '../models/categoryModel.js';
 
 export const getSubCategoryValidator = [
@@ -33,7 +33,7 @@ export const createSubCategoryValidator = [
         .custom(async (categoryId) => {
             const category = await Category.findById(categoryId);
             if (!category) {
-                throw new AbiError('Category not found');
+                throw new ApiError('Category not found');
             }
         }),
 

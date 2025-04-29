@@ -17,7 +17,7 @@ import User from '../models/userModel.js';
 export const signup = asyncHandler(async (req, res, next) => {
 
     const verificationCode = crypto.randomInt(100000, 999999).toString();
-    const verificationCodeExpiresAt = Date.now() + 60 * 60 * 1000;
+    const verificationCodeExpiresAt = Date.now() + 60 * 60 * 1000; // 1 hour
 
     const user = await User.create({
         name: req.body.name,

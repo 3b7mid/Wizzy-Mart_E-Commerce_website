@@ -1,7 +1,7 @@
 import express from 'express';
-import { addProductToCart, getLoggedUserCart, removeSpecificCartItem, clearCart, applyCoupon } from '../services/cartService.js';
-import { addProductToCartValidator, applyCouponValidator, getCartValidator, removeCartItemValidator } from '../middlewares/cartMiddleware.js';
 import { protect, allowedTo } from '../services/authService.js';
+import { addProductToCartValidator, applyCouponValidator, getCartValidator, removeCartItemValidator } from '../validators/cartValidator.js';
+import { addProductToCart, getLoggedUserCart, removeSpecificCartItem, clearCart, applyCoupon } from '../services/cartService.js';
 
 const router = express.Router();
 

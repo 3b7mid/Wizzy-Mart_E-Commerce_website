@@ -1,9 +1,9 @@
 import express from "express";
-import { createCategory, getCategories, getCategory, updateCategory, deleteCategory } from "../services/categoryService.js";
-import { createCategoryValidator, getCategoryValidator, updateCategoryValidator, deleteCategoryValidator } from "../middlewares/categoryMiddleware.js";
 import { protect, allowedTo } from '../services/authService.js';
-import { uploadSingleImage } from '../utils/multer.js';
-import { resizecategoryImage } from '../middlewares/cloudinaryMiddleware.js';
+import { createCategoryValidator, getCategoryValidator, updateCategoryValidator, deleteCategoryValidator } from "../validators/categoryValidator.js";
+import { uploadSingleImage } from '../middleware/multerMiddleware.js';
+import { resizecategoryImage } from '../middleware/cloudinaryMiddleware.js';
+import { createCategory, getCategories, getCategory, updateCategory, deleteCategory } from "../services/categoryService.js";
 
 const router = express.Router();
 router.use(protect);

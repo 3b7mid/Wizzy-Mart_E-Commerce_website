@@ -1,7 +1,7 @@
 import express from "express";
 import { protect, allowedTo } from "../services/authService.js";
+import { addAddressValidator, removeAddressValidator } from "../validators/addressValidator.js";
 import { addAddress, removeAddress, getLoggedUserAddresses} from "../services/addressService.js";
-import { addAddressValidator, removeAddressValidator } from "../middlewares/addressMiddleware.js";
 
 const router = express.Router();
 

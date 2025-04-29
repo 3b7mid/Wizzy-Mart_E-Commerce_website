@@ -1,8 +1,8 @@
 import express from "express";
+import { signupValidator, loginValidator } from '../validators/authValidator.js';
+import { resizeUserImage } from "../middleware/cloudinaryMiddleware.js";
+import { uploadSingleImage } from "../middleware/multerMiddleware.js";
 import { signup, verifyEmail, login, logout, forgetPassword, verifyResetToken, resetPassword } from '../services/authService.js';
-import { signupValidator, loginValidator } from '../middlewares/authMiddleware.js';
-import { resizeUserImage } from "../middlewares/cloudinaryMiddleware.js";
-import { uploadSingleImage } from "../utils/multer.js";
 
 const router = express.Router();
 

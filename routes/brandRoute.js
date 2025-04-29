@@ -1,7 +1,8 @@
 import express from 'express';
-import { createBrand, getBrands, getBrand, updateBrand, deletebrand } from '../services/brandService.js';
-import { createBrandValidator, getBrandValidator, updateBrandValidator, deleteBrandValidator } from '../middlewares/brandMiddleware.js';
 import { protect, allowedTo } from '../services/authService.js';
+import { createBrandValidator, getBrandValidator, updateBrandValidator, deleteBrandValidator } from '../validators/brandValidator.js';
+import { createBrand, getBrands, getBrand, updateBrand, deletebrand } from '../services/brandService.js';
+
 const router = express.Router();
 
 router.route('/')

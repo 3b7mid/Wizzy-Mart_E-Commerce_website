@@ -1,5 +1,5 @@
 import { check } from 'express-validator';
-import validatorMiddleware from './validatorMiddleware.js';
+import validatorMiddleware from '../middleware/validatorMiddleware.js';
 import Coupon from '../models/couponModel.js';
 
 export const getCouponValidator = [

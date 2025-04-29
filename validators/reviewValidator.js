@@ -1,5 +1,5 @@
 import { check } from 'express-validator';
-import validatorMiddleware from './validatorMiddleware.js';
+import validatorMiddleware from '../middleware/validatorMiddleware.js';
 import Review from '../models/reviewModel.js';
 
 export const createReviewValidator = [

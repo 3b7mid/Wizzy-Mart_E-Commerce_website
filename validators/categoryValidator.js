@@ -1,6 +1,6 @@
 import { check, body } from 'express-validator';
 import slugify from 'slugify';
-import validatorMiddleware from './validatorMiddleware.js';
+import validatorMiddleware from '../middleware/validatorMiddleware.js';
 
 export const getCategoryValidator = [
     check('id')

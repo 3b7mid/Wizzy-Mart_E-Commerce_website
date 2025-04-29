@@ -1,5 +1,5 @@
 import { check, body } from 'express-validator';
-import validatorMiddleware from '../middlewares/validatorMiddleware.js';
+import validatorMiddleware from '../middleware/validatorMiddleware.js';
 import slugify from 'slugify';
 import Category from '../models/categoryModel.js';
 import SubCategory from '../models/subCategoryModel.js';

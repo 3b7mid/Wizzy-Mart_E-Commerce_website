@@ -1,5 +1,5 @@
 import { check, body } from 'express-validator';
-import validatorMiddleware from './validatorMiddleware.js';
+import validatorMiddleware from '../middleware/validatorMiddleware.js';
 import ApiError from '../utils/apiError.js';
 import Product from '../models/productModel.js';
 

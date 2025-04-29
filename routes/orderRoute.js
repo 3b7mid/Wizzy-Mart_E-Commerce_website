@@ -1,7 +1,7 @@
 import express from 'express';
-import { checkoutSessionValidator, createOrderValidator, deleteOrderValidator, updateOrderValidator, updateShippingPriceValidator } from '../middlewares/orderMiddleware.js';
-import { createDirectOrder, createCashOrder, getAllUserOrders, getAllOrders, deleteOrder, checkoutSession, updateOrderToPaid, updateOrderToDelivered, updateGlobalShippingPrice, updateShippingPrice } from '../services/orderService.js';
 import { protect, allowedTo } from '../services/authService.js';
+import { checkoutSessionValidator, createOrderValidator, deleteOrderValidator, updateOrderValidator, updateShippingPriceValidator } from '../validators/orderValidator.js';
+import { createDirectOrder, createCashOrder, getAllUserOrders, getAllOrders, deleteOrder, checkoutSession, updateOrderToPaid, updateOrderToDelivered, updateGlobalShippingPrice, updateShippingPrice } from '../services/orderService.js';
 
 const router = express.Router();
 
