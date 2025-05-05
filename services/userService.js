@@ -1,7 +1,9 @@
 import asyncHandler from 'express-async-handler';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
+import { sendVerificationEmail } from '../utils/sendEmails/emails.js';
 import { sanitizeUser } from '../utils/sanitizeData.js';
 import User from '../models/userModel.js';
 
@@ -43,55 +45,6 @@ export const getUser = asyncHandler(async (req, res, next) => {
     });
 });
 
-// @desc    Update specific user
-// @route   PUT /api/users/:id
-// @access  Private/Admin
-export const updateUser = asyncHandler(async (req, res, next) => {
-    const user = await User.findByIdAndUpdate(
-        req.params.id,
-        {
-            name: req.body.name,
-            slug: slugify(req.body.name),
-            email: req.body.email,
-            role: req.body.role,
-        },
-        { new: true, runValidators: true }
-    );
-
-    if (!user) {
-        return next(new ApiError(`There is no user found with this ID: ${req.params.id}`, 404));
-    }
-
-    res.status(200).json({
-        data: sanitizeUser(user)
-    });
-});
-
-// @desc    Change user password
-// @route   PUT /api/users/:id
-// @access  Private/User
-export const changePassword = asyncHandler(async (req, res, next) => {
-    const hashedPassword = await bcrypt.hash(req.body.password, 12);
-
-    const user = await User.findByIdAndUpdate(
-        req.params.id,
-        {
-            password: hashedPassword,
-            passwordChangedAt: Date.now()
-        },
-        { new: true, runValidators: true }
-    );
-
-    if (!user) {
-        return next(new ApiError(`There is no user found with ID: ${req.params.id}`, 404));
-    }
-
-    res.status(200).json({
-        status: 'success',
-        message: 'Password changed successfully'
-    });
-});
-
 // @desc    Delete a user
 // @route   Delete /api/users/:id
 // @access  Private/Admin
@@ -118,17 +71,64 @@ export const getLoggedUserData = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/users/updateMe
 // @access  Private/Protect
 export const updateLoggedUserData = asyncHandler(async (req, res, next) => {
-    const updatedUser = await User.findByIdAdndUpdate(
-        req.user._id,
-        {
-            name: req.body.name,
-            email: req.body.email,
-            profileImage: req.body.profileImage
-        },
-        { new: true, runValidators: true }
+    const allowedUpdates = ['name', 'email'];
+    const updates = Object.fromEntries(
+        Object.entries(req.body).filter(([key]) => allowedUpdates.includes(key))
     );
 
+    let verificationCode;
+
+    if (updates.email) {
+        const existingUser = await User.findOne({ email: updates.email });
+        if (existingUser && existingUser._id.toString() !== req.user._id.toString()) {
+            return next(new ApiError('Email is already in use by another account', 400));
+        }
+
+        verificationCode = crypto.randomInt(100000, 999999).toString();
+        updates.verificationCode = crypto.createHash('sha256').update(verificationCode).digest('hex');
+        updates.verificationCodeExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        updates.isVerified = false;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, updates, {
+        new: true,
+        runValidators: true
+    });
+
+    if (updates.email) {
+        try {
+            await sendVerificationEmail(updatedUser.email, updatedUser.name, verificationCode);
+        } catch (err) {
+            updatedUser.verificationCode = undefined;
+            updatedUser.verificationCodeExpiresAt = undefined;
+            updatedUser.isVerified = true;
+            await updatedUser.save();
+            return next(new ApiError('Failed to send verification email. Please try again.', 500));
+        }
+    }
+
     res.status(200).json({
+         message: updates.email ? 'Email updated. Please verify your new email.' : 'Profile updated.',
         data: sanitizeUser(updatedUser)
+    });
+});
+
+// @desc    Change user password
+// @route   PUT /api/users/:id
+// @access  Private/User
+export const changePassword = asyncHandler(async (req, res, next) => {
+    const user = await User.findById(req.params.userId);
+
+    if (!user) {
+        return next(new ApiError(`User Not found`, 404));
+    }
+
+    user.password = req.body.password;
+    user.passwordChangedAt = new Date();
+    await user.save();
+
+    res.status(200).json({
+        status: 'success',
+        message: 'Password changed successfully'
     });
 });

@@ -7,22 +7,19 @@ const userSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
-        slug: {
-            type: String,
-            lowercase: true
-        },
         email: {
             type: String,
             trim: true,
             lowercase: true
         },
-        profileImage: {
-            type: String,
-            default: 'https://ui-avatars.com/api/?name=User&background=ddd&color=555'
-        },
         password: {
             type: String,
-            trim: true
+            trim: true,
+        },
+        googleId: {
+            type: String,
+            unique: true,
+            sparse: true,
         },
         role: {
             type: String,
@@ -31,8 +28,8 @@ const userSchema = new mongoose.Schema(
         },
         wishlist: [
             {
-                type : mongoose.Schema.Types.ObjectId,
-                ref : 'Product'
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Product'
             }
         ],
         addresses: [
@@ -50,15 +47,27 @@ const userSchema = new mongoose.Schema(
             default: true
         },
         passwordChangedAt: Date,
-        passwordResetCode: String,
+        passwordResetCode: {
+            type: String,
+            unique: true,
+            sparse: true,
+            index: true,
+        },
         passwordResetExpiresAt: Date,
         passwordResetVerified: Boolean,
         isVerified: Boolean,
-        verificationCode: String,
+        verificationCode: {
+            type: String,
+            unique: true,
+            sparse: true,
+            index: true,
+        },
         verificationCodeExpiresAt: Date
     },
     { timestamps: true },
 );
+
+userSchema.index({ email: 1 });
 
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();

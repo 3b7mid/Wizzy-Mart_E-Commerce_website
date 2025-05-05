@@ -10,95 +10,103 @@ import globalShippingPrice from '../models/shippingPriceModel.js';
 import Order from '../models/orderModel.js';
 
 const calculateTotalOrderPrice = (cart) => {
-    return cart.totalPriceAfterDiscount || cart.totalOrderPrice;
+    const discountPrice = cart.totalPriceAfterDiscount;
+    const cartPrice = cart.totalCartPrice;
+
+    if (typeof discountPrice === 'number' && !isNaN(discountPrice)) {
+        return discountPrice;
+    } else if (typeof cartPrice === 'number' && !isNaN(cartPrice)) {
+        return cartPrice;
+    }
+    return 0;
 };
 
 // @desc Create direct order
 // @route POST /api/orders/direct-order
 // @access Protected/User
-export const createDirectOrder = asyncHandler(async (req, res, next) => {
-    const { cartItems, shippingAddress } = req.body;
-    if (!cartItems || cartItems.length === 0) {
-        return next(new ApiError('No products provided', 400));
-    }
+// export const createDirectOrder = asyncHandler(async (req, res, next) => {
+//     const { cartItems, shippingAddress } = req.body;
+//     if (!cartItems || cartItems.length === 0) {
+//         return next(new ApiError('No products provided', 400));
+//     }
 
-    const productIds = cartItems.map((item) => item.product);
-    const products = await Product.find({ _id: { $in: productIds } });
+//     const productIds = cartItems.map((item) => item.product);
+//     const products = await Product.find({ _id: { $in: productIds } });
 
-    if (products.length !== cartItems.length) {
-        return next(new ApiError('Some products do not exist', 400));
-    }
+//     if (products.length !== cartItems.length) {
+//         return next(new ApiError('Some products do not exist', 400));
+//     }
 
-    let totalOrderPrice = 0;
-    let updatedCartItems = [];
+//     let totalOrderPrice = 0;
+//     let updatedCartItems = [];
 
-    for (const item of cartItems) {
-        const product = products.find((p) => String(p._id) === String(item.product));
-        if (!product) {
-            return next(new ApiError(`Product not found: ${item.product}`, 404));
-        }
-        if (product.quantity < item.amount) {
-            return next(
-                new ApiError(
-                    `Insufficient stock for "${product.title}". Available: ${product.quantity}, Requested: ${item.amount}`,
-                    400
-                )
-            );
-        }
+//     for (const item of cartItems) {
+//         const product = products.find((p) => String(p._id) === String(item.product));
+//         if (!product) {
+//             return next(new ApiError(`Product not found: ${item.product}`, 404));
+//         }
+//         if (product.quantity < item.amount) {
+//             return next(
+//                 new ApiError(
+//                     `Insufficient stock for "${product.title}". Available: ${product.quantity}, Requested: ${item.amount}`,
+//                     400
+//                 )
+//             );
+//         }
 
-        totalOrderPrice += product.price * item.amount;
+//         totalOrderPrice += product.price * item.amount;
 
-        updatedCartItems.push({
-            product: item.product,
-            amount: item.amount,
-            color: item.color,
-            price: product.price
-        });
-    }
+//         updatedCartItems.push({
+//             product: item.product,
+//             amount: item.amount,
+//             color: item.color,
+//             price: product.price
+//         });
+//     }
 
-    let shippingPrice = 0;
-    try {
-        const shipPrice = await globalShippingPrice.findOne();
-        if (shipPrice && shipPrice.shippingPrice) {
-            shippingPrice = shipPrice.shippingPrice;
-        }
-    } catch (error) {
-        return next(new ApiError('Error fetching shipping price', 500));
-    }
+//     let shippingPrice = 0;
+//     try {
+//         const shipPrice = await globalShippingPrice.findOne();
+//         if (shipPrice && shipPrice.shippingPrice) {
+//             shippingPrice = shipPrice.shippingPrice;
+//         }
+//     } catch (error) {
+//         return next(new ApiError('Error fetching shipping price', 500));
+//     }
 
-    totalOrderPrice += shippingPrice;
+//     totalOrderPrice += shippingPrice;
 
-    const newOrder = await Order.create({
-        user: req.user._id,
-        cartItems: updatedCartItems,
-        shippingAddress,
-        totalOrderPrice,
-        shippingPrice,
-        paymentMethodType: 'cash',
-        isPaid: false
-    });
+//     const newOrder = await Order.create({
+//         user: req.user._id,
+//         cartItems: updatedCartItems,
+//         shippingAddress,
+//         totalOrderPrice,
+//         shippingPrice,
+//         paymentMethodType: 'cash',
+//         isPaid: false
+//     });
 
-    const bulkOption = cartItems.map((item) => ({
-        updateOne: {
-            filter: { _id: item.product },
-            update: { $inc: { quantity: -item.amount, sold: +item.amount } }
-        }
-    }));
+//     const bulkOption = cartItems.map((item) => ({
+//         updateOne: {
+//             filter: { _id: item.product },
+//             update: { $inc: { quantity: -item.amount, sold: +item.amount } }
+//         }
+//     }));
 
-    if (bulkOption.length > 0) {
-        await Product.bulkWrite(bulkOption, {});
-    }
+//     if (bulkOption.length > 0) {
+//         await Product.bulkWrite(bulkOption, {});
+//     }
 
-    await newOrder.populate({
-        path: 'user',
-        select: '_id name email'
-    });
+//     await newOrder.populate({
+//         path: 'user',
+//         select: '_id name email'
+//     });
 
-    res.status(201).json({
-        status: 'success',
-        data: sanitizeOrder(newOrder)
-    });
-});
+//     res.status(201).json({
+//         status: 'success',
+//         data: sanitizeOrder(newOrder)
+//     });
+// });
 
 // @desc    Create cash order
 // @route   POST /api/orders/cartId
@@ -125,7 +133,7 @@ export const createCashOrder = asyncHandler(async (req, res, next) => {
     });
 
     if (order) {
-        const bulkOption = cartItems.map((item) => ({
+        const bulkOption = cart.cartItems.map((item) => ({
             updateOne: {
                 filter: { _id: item.product },
                 update: { $inc: { quantity: -item.amount, sold: +item.amount } }
@@ -153,7 +161,7 @@ export const createCashOrder = asyncHandler(async (req, res, next) => {
 // @access  Protect/Admin
 export const getAllOrders = asyncHandler(async (req, res, next) => {
     const totalOrders = await Order.countDocuments();
-    const features = new ApiFeatures(Order.find(), req.query)
+    const features = new ApiFeatures(Order.find().populate('user', '_id name email'), req.query)
         .filter()
         .sort()
         .limitFields()
@@ -262,45 +270,48 @@ export const deleteOrder = asyncHandler(async (req, res, next) => {
 // @route   DELETE api/orders/checkout-session/cartId
 // @access  Protect/User
 export const checkoutSession = asyncHandler(async (req, res, next) => {
-    const shipPrice = await globalShippingPrice.findOne();
-    const shippingPrice = shipPrice ? shipPrice.shippingPrice : 0;
     const { cartId } = req.params;
+    const cart = await Cart.findById(cartId).populate("cartItems.product");
 
-    const cart = await Cart.findById(cartId).populate("cartItems.product")
-    if (!cart) {
-        return next(new ApiError(`There is no such cart with ID: ${cartId}`, 404));
-    }
+    if (!cart) return next(new ApiError(`No cart found with ID: ${cartId}`, 404));
 
-    const cartPrice = cart.totalPriceAfterDiscount || cart.totalCartPrice;
+    const shipping = await globalShippingPrice.findOne();
+    const shippingPrice = shipping?.shippingPrice || 0;
+
+    const cartPrice = cart.totalPriceAfterDiscount ?? cart.totalCartPrice ?? 0;
     const totalOrderPrice = cartPrice + shippingPrice;
 
+    if (isNaN(totalOrderPrice)) {
+        return next(new ApiError('Invalid total order price', 400));
+    }
+
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
     const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
-        line_items: [
-            {
-                price_data: {
-                    currency: 'egp',
-                    product_data: {
-                        name: 'Order from ' + req.user.name
-                    },
-                    unit_amount: Math.round(totalOrderPrice * 100)
+        line_items: [{
+            price_data: {
+                currency: 'egp',
+                product_data: {
+                    name: `Order from ${req.user.name}`,
                 },
-                quantity: 1
-            }
-        ],
+                unit_amount: Math.round(totalOrderPrice * 100),
+            },
+            quantity: 1,
+        }],
         mode: 'payment',
         success_url: `${req.protocol}://${req.get('host')}/orders`,
         cancel_url: `${req.protocol}://${req.get('host')}/cart`,
         customer_email: req.user.email,
         client_reference_id: cartId,
-        metadata: req.body.shippingAddress
+        metadata: {
+            address: req.body.shippingAddress?.address || '',
+            phone: req.body.shippingAddress?.phone || '',
+            city: req.body.shippingAddress?.city || '',
+        },
     });
 
-    res.status(200).json({
-        status: 'success',
-        session
-    });
+    res.status(200).json({ status: 'success', session });
 });
 
 const createCardOrder = async (session) => {

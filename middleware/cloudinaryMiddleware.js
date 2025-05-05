@@ -26,33 +26,6 @@ const uploadToCloudinary = (buffer, filename, folder, format = 'jpeg', quality =
     });
 };
 
-export const resizeUserImage = asyncHandler(async (req, res, next) => {
-    if (!req.file) return next(); // Skip if no image uploaded
-
-    try {
-        const profileImageFileName = `user-${uuidv4()}-profile.jpeg`;
-
-        // Resize image
-        const buffer = await sharp(req.file.buffer)
-            .resize(500, 500, {
-                fit: sharp.fit.cover,
-                position: sharp.strategy.center
-            })
-            .toFormat('jpeg')
-            .jpeg({ quality: 90 })
-            .toBuffer();
-
-        // Upload to Cloudinary
-        const result = await uploadToCloudinary(buffer, profileImageFileName, 'users');
-
-        req.body.profileImage = result.secure_url; // Save URL to request body
-
-        next();
-    } catch (error) {
-        next(new ApiError('Error processing image upload', 500));
-    }
-});
-
 export const resizecategoryImage = asyncHandler(async (req, res, next) => {
     if (!req.file) return next(); // Skip if no image uploaded
 
@@ -99,7 +72,7 @@ export const resizeProductImages = asyncHandler(async (req, res, next) => {
                 .webp({ quality: 90 })
                 .toBuffer();
 
-            const result = await uploadToCloudinary(buffer, imageCoverFileName, 'azirProducts');
+            const result = await uploadToCloudinary(buffer, imageCoverFileName, 'Products');
 
             req.body.imageCover = result.secure_url;
         }
@@ -118,7 +91,7 @@ export const resizeProductImages = asyncHandler(async (req, res, next) => {
                             .webp({ quality: 90 })
                             .toBuffer();
 
-                        const result = await uploadToCloudinary(buffer, imageName, 'azirProducts');
+                        const result = await uploadToCloudinary(buffer, imageName, 'Products');
                         return result.secure_url;
                     } catch (error) {
                         console.error(`Error uploading image ${index + 1}:`, error);

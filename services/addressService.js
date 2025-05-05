@@ -16,7 +16,7 @@ export const addAddress = asyncHandler(async (req, res, next) => {
     res.status(200).json({
         status: 'Sucess',
         message: 'Address added successfully.',
-        data: user.addresses,
+        data: user.addresses
     });
 });
 

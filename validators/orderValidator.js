@@ -17,22 +17,6 @@ export const createOrderValidator = [
         .notEmpty()
         .withMessage('City is required'),
 
-    check('cartItems')
-        .isArray({ min: 1 })
-        .withMessage('At least one product is required'),
-
-    check('cartItems.*.product')
-        .notEmpty()
-        .withMessage('Product ID is required')
-        .isMongoId()
-        .withMessage('Invalid product ID format'),
-
-    check('cartItems.*.amount')
-        .notEmpty()
-        .withMessage('Product amount is required')
-        .isInt({ min: 1, max: 100 })
-        .withMessage('Product amount must be a positive number between 1 and 100'),
-
     validatorMiddleware
 ];
 

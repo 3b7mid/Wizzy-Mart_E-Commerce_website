@@ -20,11 +20,9 @@ const cartSchema = mongoose.Schema(
         ],
         totalCartPrice: {
             type: Number,
-            default: 0
         },
         totalPriceAfterDiscount: {
             type: Number,
-            default: 0
         },
         user: {
             type: mongoose.Schema.Types.ObjectId,

@@ -5,15 +5,15 @@ import { getCoupons, createCoupon, getCoupon, updateCoupon, deleteCoupon } from 
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, allowedTo('admin'));
 
 router.route('/')
-    .get(allowedTo('admin', 'user'), getCoupons)
-    .post(allowedTo('admin'), createCouponValidator, createCoupon);
+    .get(getCoupons)
+    .post(createCouponValidator, createCoupon);
 
 router.route('/:couponId')
-    .get(allowedTo('admin', 'user'), getCouponValidator, getCoupon)
-    .put(allowedTo('admin'), updateCouponValidator, updateCoupon)
-    .delete(allowedTo('admin'), deleteCouponValidator, deleteCoupon);
+    .get(getCouponValidator, getCoupon)
+    .put(updateCouponValidator, updateCoupon)
+    .delete(deleteCouponValidator, deleteCoupon);
 
 export default router;

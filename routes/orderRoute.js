@@ -1,12 +1,12 @@
 import express from 'express';
 import { protect, allowedTo } from '../services/authService.js';
 import { checkoutSessionValidator, createOrderValidator, deleteOrderValidator, updateOrderValidator, updateShippingPriceValidator } from '../validators/orderValidator.js';
-import { createDirectOrder, createCashOrder, getAllUserOrders, getAllOrders, deleteOrder, checkoutSession, updateOrderToPaid, updateOrderToDelivered, updateGlobalShippingPrice, updateShippingPrice } from '../services/orderService.js';
+import { createCashOrder, getAllUserOrders, getAllOrders, deleteOrder, checkoutSession, updateOrderToPaid, updateOrderToDelivered, updateGlobalShippingPrice, updateShippingPrice } from '../services/orderService.js';
 
 const router = express.Router();
 
-router.route('/direct-order')
-    .post(protect, allowedTo('user'), createOrderValidator, createDirectOrder);
+// router.route('/direct-order')
+//     .post(protect, allowedTo('user'), createOrderValidator, createDirectOrder);
 
 router.route('/:cartId')
     .post(protect, allowedTo('user'), createOrderValidator, createCashOrder);

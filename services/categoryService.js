@@ -7,7 +7,7 @@ import Category from '../models/categoryModel.js';
 // @desc    Create a category 
 // @route   POST /api/categories
 // @access  Private/Admin
-export const createCategory = asycnHandler( async(req, res) => {
+export const createCategory = asycnHandler(async (req, res) => {
     const category = await Category.create(req.body);
 
     res.status(201).json({
@@ -71,12 +71,11 @@ export const updateCategory = asycnHandler(async (req, res, next) => {
 // @desc    Delete a category
 // @route   PUT /api/categories/:id
 // @access  Private/Admin
-export const deleteCategory = asycnHandler(async (req, res, next ) => {
+export const deleteCategory = asycnHandler(async (req, res, next) => {
     const category = await Category.findByIdAndDelete(req.params.id);
 
     if (!category) {
         return next(new ApiError(`No category found with this ID ${req.params.id}`, 404));
     }
-    json
     res.status(200).end();
 });

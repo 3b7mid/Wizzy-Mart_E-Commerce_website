@@ -2,8 +2,8 @@ import asyncHandler from 'express-async-handler';
 import ApiFeatures from '../utils/apiFeatures.js';
 import ApiError from '../utils/apiError.js';
 import { sanitizeReview } from '../utils/sanitizeData.js';
-import calcAverageRatingsAndQuantity from '../models/reviewModel.js';
 import Review from '../models/reviewModel.js';
+// import Product from '../models/productModel.js';
 
 // Nested route (Create)
 export const setProductIdAndUserIdToBody = (req, res, next) => {
@@ -13,7 +13,7 @@ export const setProductIdAndUserIdToBody = (req, res, next) => {
 };
 
 // @desc    Create review
-// @route   POST /api/reviews
+// @route   POST /api/products/:productId/reviews
 // @access  Private/Protect/User
 export const createReview = asyncHandler(async (req, res) => {
     const { title, ratings } = req.body;
@@ -31,12 +31,14 @@ export const createReview = asyncHandler(async (req, res) => {
 });
 
 // @desc    Get list of reviews
-// @route   GET /api/reviews
+// @route   GET /api/products/:productId/reviews
 // @access  Public
 export const getReviews = asyncHandler(async (req, res) => {
-    const totalReviews = await Review.countDocuments();
+    const { productId } = req.params;
+    const query = productId ? Review.find({ product: productId }) : Review.find();
+    const totalReviews = await Review.countDocuments(productId ? { product: productId } : {});
 
-    const features = new ApiFeatures(Review.find(), req.query)
+    const features = new ApiFeatures(query, req.query)
         .filter()
         .sort()
         .limitFields()
@@ -53,14 +55,14 @@ export const getReviews = asyncHandler(async (req, res) => {
 });
 
 // @desc    Get specific review by ID
-// @route   GET /api/reviews/:id
+// @route   GET /api/products/:productId/reviews/:reviewId
 // @access  Public
 export const getReview = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
-    const review = await Review.findById(id);
+    const { productId, reviewId } = req.params;
 
+    const review = await Review.findOne({ _id: reviewId, product: productId });
     if (!review) {
-        return next(new ApiError(`There is no review found with this ID: ${id}`, 404));
+        return next(new ApiError(`Review with ID ${reviewId} not found for this product`, 404));
     }
 
     res.status(200).json({
@@ -68,37 +70,31 @@ export const getReview = asyncHandler(async (req, res, next) => {
     });
 });
 
-// @desc    Create review
-// @route   POST  /api/reviews
+// @desc    Update review
+// @route   PUT  /api/products/:productId/reviews/:reviewId
 // @access  Private/Protect/User
 export const updateReview = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
+    const { reviewId } = req.params;
 
-    const review = await Review.findByIdAndUpdate(id, req.body, {
+    const updatedReview = await Review.findByIdAndUpdate(reviewId, req.body, {
         new: true,
         runValidators: true
     });
 
-    if (!review) {
-        return next(new ApiError(`There is no review found with this ID: ${id}`, 404));
-    }
-
-    //await Review.calcAverageRatingsAndQuantity(review.product);
-
     res.status(200).json({
-        data: sanitizeReview(review),
+        data: sanitizeReview(updatedReview),
     });
 });
 
 // @desc    Delete specific review
-// @route   DELETE /api/reviews/:id
+// @route   DELETE /api/products/:productId/reviews/:reviewId
 // @access  Private/Protect/User-Admin
 export const deleteReview = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
-    const review = await Review.findByIdAndDelete(id);
+    const { reviewId } = req.params;
+    const review = await Review.findByIdAndDelete(reviewId);
 
     if (!review) {
-        return next(new ApiError(`There is no review found with this ID: ${id}`, 404));
+        return next(new ApiError(`There is no review found with this ID: ${reviewId}`, 404));
     }
     //await Review.calcAverageRatingsAndQuantity(review.product);
 
