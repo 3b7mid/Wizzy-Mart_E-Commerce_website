@@ -6,6 +6,7 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Get absolute path to docs directory
 const docsPath = join(__dirname, '..', 'docs');
 
 const options = {
@@ -22,16 +23,20 @@ const options = {
     },
     servers: [
       {
-        url: process.env.NODE_ENV === 'production' 
-          ? 'https://wizzy-mart-e-commerce-website.vercel.app'
-          : 'http://localhost:8000',
-        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
+        url: 'https://wizzy-mart-e-commerce-website.vercel.app/',
+        description: 'Production server'
+      },
+      {
+        url: 'http://localhost:8000',
+        description: 'Development server'
       }
     ]
   },
-  apis: [`${docsPath}/*.js`], // Use absolute path
+
+  apis: [`${docsPath}/*.js`, `${docsPath}/swagger.js`],
 };
 
+// Generate Swagger specs
 const specs = swaggerJsdoc(options);
 
 export const swaggerSetup = (app) => {
@@ -40,10 +45,15 @@ export const swaggerSetup = (app) => {
     console.log('Swagger specs generated:', Object.keys(specs.paths || {}).length, 'paths found');
     console.log('Docs path:', docsPath);
 
-    // Serve Swagger UI
-    app.use('/api-docs', swaggerUi.serve);
+    // Serve Swagger UI with CORS headers
+    app.use('/api-docs', (req, res, next) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      next();
+    }, swaggerUi.serve);
     
-    // Setup Swagger UI
+    // Setup Swagger UI with enhanced options
     app.get('/api-docs', swaggerUi.setup(specs, {
       explorer: true,
       customCss: '.swagger-ui .topbar { display: none }',
@@ -57,13 +67,17 @@ export const swaggerSetup = (app) => {
         syntaxHighlight: {
           activate: true,
           theme: 'monokai'
-        }
+        },
+        tryItOutEnabled: true,
+        requestSnippetsEnabled: true
       }
     }));
 
-    // Serve Swagger JSON
+    // Serve Swagger JSON with CORS headers
     app.get('/api-docs.json', (req, res) => {
       res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET');
       res.send(specs);
     });
 
@@ -75,7 +89,8 @@ export const swaggerSetup = (app) => {
       message: error.message,
       stack: error.stack,
       specs: specs ? 'Specs generated' : 'No specs generated',
-      docsPath
+      docsPath,
+      paths: specs?.paths ? Object.keys(specs.paths) : 'No paths found'
     });
   }
 }; 
