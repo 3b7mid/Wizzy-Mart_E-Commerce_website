@@ -4,8 +4,7 @@ const brandSchema = new mongoose.Schema(
     {
         name: {
             type: String,
-            trim: true,
-            unique: [true, 'Brand already exists'],
+            trim: true
         },
         slug: {
             type: String,
@@ -15,18 +14,18 @@ const brandSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Category'
         },
-        subCategories: [{
+        subCategory: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'SubCategory'
-        }]
+        }
     },
     { timestamps: true }
 );
 
 brandSchema.pre(/^find/, function (next) {
     this.populate({
-        path: 'category subCategories',
-        select: 'name _id'
+        path: 'category subCategory',
+        select: '_id name'
     });
     next();
 });

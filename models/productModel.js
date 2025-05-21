@@ -2,9 +2,10 @@ import mongoose from "mongoose";
 
 const productSchema = mongoose.Schema(
     {
-        title: {
+        name: {
             type: String,
-            trim: true,
+            required: true,
+            trim: true
         },
         slug: {
             type: String,
@@ -12,6 +13,35 @@ const productSchema = mongoose.Schema(
         },
         description: {
             type: String
+        },
+        seller: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        sku: {
+            type: String,
+            trim: true
+        },
+        model: {
+            type: String
+        },
+        category: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Category'
+        },
+        subCategory: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'SubCategory'
+        },
+        brand: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Brand'
+        },
+        price: Number,
+        priceAfterDiscount: Number,
+        discountPercent: {
+            type: Number,
+            default: 0
         },
         quantity: {
             type: Number,
@@ -21,29 +51,10 @@ const productSchema = mongoose.Schema(
             type: Number,
             default: 0
         },
-        price: {
-            type: Number,
-            trim: true
-        },
-        priceAfterDiscount: {
-            type: Number
-        },
-        colors: [String],
-        imageCover: {
-            type: String
-        },
-        images: [String],
-        category: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Category'
-        },
-        subCategories: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'SubCategory'
-        }],
-        brand: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Brand'
+        availability: {
+            type: String,
+            enum: ['in stock', 'out of stock'],
+            default: 'in stock'
         },
         ratingsAverage: {
             type: Number,
@@ -52,7 +63,19 @@ const productSchema = mongoose.Schema(
         ratingsQuantity: {
             type: Number,
             default: 0
-        }
+        },
+        imageCover: {
+            type: String
+        },
+        images: [String],
+        colors: [String],
+        size: [String],
+        memory: [String],
+        weight: String,
+        storage: [String],
+        features: [String],
+        tags: [String],
+        shippingInfo: [String]
     },
     {
         timestamps: true,
@@ -69,12 +92,11 @@ productSchema.virtual('reviews', {
 
 productSchema.pre(/^find/, function (next) {
     this.populate({
-        path: 'category subCategories brand',
-        select: 'name _id'
-    });
-    this.populate({
+        path: 'category subCategory brand',
+        select: '_id name'
+    }).populate({
         path: 'reviews',
-        select: 'title ratings user'
+        select: 'ratings feedback user'
     });
     next();
 });

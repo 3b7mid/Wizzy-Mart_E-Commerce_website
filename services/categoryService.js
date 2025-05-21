@@ -1,28 +1,17 @@
-import asycnHandler from 'express-async-handler';
 import ApiFeature from '../utils/apiFeatures.js';
 import ApiError from '../utils/apiError.js';
-import { sanitizeCategory } from '../utils/sanitizeData.js';
 import Category from '../models/categoryModel.js';
 
-// @desc    Create a category 
-// @route   POST /api/categories
-// @access  Private/Admin
-export const createCategory = asycnHandler(async (req, res) => {
-    const category = await Category.create(req.body);
+export const createCategoryService = async ({ name, slug, categoryImage }) => {
+    const category = await Category.create({ name, slug, categoryImage });
 
-    res.status(201).json({
-        success: true,
-        data: sanitizeCategory(category)
-    });
-});
+    return category;
+};
 
-// @desc    Get all categories
-// @route   GET /api/categories
-// @access  Public
-export const getCategories = asycnHandler(async (req, res) => {
+export const getCategoriesService = async (query) => {
     const totalCategories = await Category.countDocuments();
 
-    const features = new ApiFeature(Category.find(), req.query)
+    const features = new ApiFeature(Category.find(), query)
         .filter()
         .sort()
         .limitFields()
@@ -31,51 +20,38 @@ export const getCategories = asycnHandler(async (req, res) => {
 
     const categories = await features.mongooseQuery.exec();
 
-    res.status(200).json({
-        success: true,
+    return {
+        totalCategories,
         pagination: features.paginationResult,
-        data: categories.map(sanitizeCategory)
-    });
-});
-
-// @desc    Get a category
-// @route   GET @access  Public
-// route    /api/categories/:id
-export const getCategory = asycnHandler(async (req, res) => {
-    const { id } = req.params;
-
-    const category = await Category.findById(id);
-    if (!category) {
-        return next(new ApiError(`No category found with id: ${id}`, 404));
+        categories
     }
+};
 
-    res.status(200).json({
-        success: true,
-        data: sanitizeCategory(category)
-    });
-});
-
-// @desc    Update a category
-// @route   PUT /api/categories/:id
-// @access  Private/Admin
-export const updateCategory = asycnHandler(async (req, res, next) => {
-    const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+export const getCategoryService = async (categoryId) => {
+    const category = await Category.findById(categoryId);
 
     if (!category) {
-        return next(new ApiError(`No category found with this ID ${req.params.id}`, 404));
+        throw new ApiError('Category not found.', 404);
     }
 
-    res.status(200).json({ data: sanitizeCategory(category) });
-});
+    return category;
+};
 
-// @desc    Delete a category
-// @route   PUT /api/categories/:id
-// @access  Private/Admin
-export const deleteCategory = asycnHandler(async (req, res, next) => {
-    const category = await Category.findByIdAndDelete(req.params.id);
+export const updateCategoryService = async (categoryId, updates) => {
+    const category = await Category.findByIdAndUpdate(categoryId, updates, { new: true, runValidators: true });
+    if (!category) {
+        throw new ApiError('Category not found.', 404);
+    }
+
+    return category;
+};
+
+export const deleteCategoryService = async (categoryId) => {
+    const category = await Category.findByIdAndDelete(categoryId);
 
     if (!category) {
-        return next(new ApiError(`No category found with this ID ${req.params.id}`, 404));
+        throw new ApiError('Category not found.', 404);
     }
-    res.status(200).end();
-});
+
+    return true;
+};

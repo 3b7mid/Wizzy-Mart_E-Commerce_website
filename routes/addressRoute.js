@@ -1,17 +1,21 @@
 import express from "express";
-import { protect, allowedTo } from "../services/authService.js";
-import { addAddressValidator, removeAddressValidator } from "../validators/addressValidator.js";
-import { addAddress, removeAddress, getLoggedUserAddresses} from "../services/addressService.js";
+import { protect, allowedTo } from "../middlewares/authMiddleware.js";
+import { addAddressValidator, userOwnsAddressValidator, updateAddressValidator } from "../validators/addressValidator.js";
+import { addAddress, getAddresses, getAddress, updateAddress, removeAddress } from "../controllers/addressController.js";
 
 const router = express.Router();
 
 router.use(protect, allowedTo('user'));
 
-router.route('/')
+router
+    .route('/')
     .post(addAddressValidator, addAddress)
-    .get(getLoggedUserAddresses);
+    .get(getAddresses);
 
-router.route('/:addressId')
-    .delete(removeAddressValidator, removeAddress);
+router
+    .route('/:addressId')
+    .get(userOwnsAddressValidator, getAddress)
+    .put(updateAddressValidator, updateAddress)
+    .delete(userOwnsAddressValidator, removeAddress);
 
 export default router;

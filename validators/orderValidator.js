@@ -1,71 +1,81 @@
-import { check } from 'express-validator';
-import validatorMiddleware from '../middleware/validatorMiddleware.js';
+import { body, param } from 'express-validator';
+import validatorMiddleware from '../middlewares/validatorMiddleware.js';
 
 export const createOrderValidator = [
-    check('shippingAddress.address')
-        .notEmpty()
-        .withMessage('Address is required')
-        .isLength({ min: 5 }),
-
-    check('shippingAddress.phone')
-        .notEmpty()
-        .withMessage('Phone number is required')
-        .isMobilePhone('ar-EG')
-        .withMessage('Invalid phone number format'),
-
-    check('shippingAddress.city')
-        .notEmpty()
-        .withMessage('City is required'),
-
-    validatorMiddleware
-];
-
-export const updateOrderValidator = [
-    check('orderId')
+    param('cartId')
         .isMongoId()
-        .withMessage('Invalid User ID format'),
-
-    validatorMiddleware
-];
-
-export const deleteOrderValidator = [
-    check('orderId')
-        .isMongoId()
-        .withMessage('Invalid order ID format'),
-
-    validatorMiddleware
-];
-
-export const checkoutSessionValidator = [
-    check('cartId')
-        .isMongoId()
-        .withMessage('Invalid cart ID format'),
-
-    check('shippingAddress.address')
+        .withMessage('Invalid cart ID format.'),
+        
+    body('billingInfo')
         .notEmpty()
-        .withMessage('Address is required')
+        .withMessage('Billing information is required'),
+
+    body('billingInfo.firstName')
+        .notEmpty()
+        .withMessage('First name is required'),
+
+    body('billingInfo.lastName')
+        .notEmpty()
+        .withMessage('Last name is required'),
+    body('billingInfo.company')
+        .optional()
+        .isString()
+        .withMessage('Company name must be a string'),
+
+    body('billingInfo.addressLine')
+        .notEmpty()
+        .withMessage('Address line is required')
         .isLength({ min: 5 })
-        .withMessage('Address must be at least 5 characters long'),
+        .withMessage('Address line must be at least 5 characters long'),
 
-    check('shippingAddress.phone')
+    body('billingInfo.country')
         .notEmpty()
-        .withMessage('Phone number is required')
-        .isMobilePhone('ar-EG')
-        .withMessage('Invalid phone number format'),
+        .withMessage('Country is required'),
 
-    check('shippingAddress.city')
+    body('billingInfo.state')
+        .notEmpty()
+        .withMessage('State is required'),
+
+    body('billingInfo.city')
         .notEmpty()
         .withMessage('City is required'),
+
+    body('billingInfo.zipCode')
+        .notEmpty()
+        .withMessage('Zip code is required'),
+
+    body('billingInfo.email')
+        .notEmpty()
+        .withMessage('Email is required')
+        .isEmail()
+        .withMessage('Invalid email format'),
+
+    body('billingInfo.phoneNumber')
+        .notEmpty()
+        .withMessage('Phone number is required')
+        .isMobilePhone()
+        .withMessage('Invalid phone number format'),
+
+    body('orderNotes')
+        .optional()
+        .notEmpty()
+        .withMessage('Order notes is required')
+        .isString()
+        .withMessage('Order notes must be a string'),
+
+    body('paymentMethodType')
+        .notEmpty()
+        .withMessage('Payment method type is required')
+        .isIn(['card', 'cash'])
+        .withMessage('Payment method type must be either card or cash'),
 
     validatorMiddleware
 ];
 
-export const updateShippingPriceValidator = [
-    check('shippingPrice')
-        .notEmpty()
-        .withMessage('Shipping price is required')
-        .isFloat({ min: 0 })
-        .withMessage('Shipping price must be a positive number'),
+export const orderIDValidator = [
+    param('orderId')
+        .isMongoId()
+        .withMessage('Invalid User ID format.'),
 
     validatorMiddleware
 ];

@@ -24,5 +24,5 @@ export const uploadMultipleImages = (fieldName, maxCount = 5) => upload.array(fi
 
 export const uploadProductImages = upload.fields([
     { name: "imageCover", maxCount: 1 },
-    { name: "images", maxCount: 5 }
+    { name: "images", maxCount: 10 }
 ]);

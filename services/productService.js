@@ -1,83 +1,138 @@
-import asyncHandler from 'express-async-handler';
-import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
-import { sanitizeProduct } from '../utils/sanitizeData.js';
+import ApiError from '../utils/apiError.js';
+import User from '../models/userModel.js';
 import Product from '../models/productModel.js';
 
-// @desc    Create a prodcut
-// @route   POST /api/products
-// @access  Private
-export const createProduct = asyncHandler(async (req, res) => {
-    const product = await Product.create(req.body);
+export const createProductService = async (userId, productInput) => {
+    const {
+        name,
+        slug,
+        description,
+        sku,
+        model,
+        category,
+        subCategory,
+        brand,
+        price,
+        priceAfterDiscount,
+        quantity,
+        sold,
+        availability,
+        ratingsAverage,
+        ratingsQuantity,
+        imageCover,
+        images,
+        features,
+        colors,
+        memory,
+        storage,
+        tags,
+        size,
+        weight,
+        shippingInfo,
+    } = productInput;
 
-    res.status(201).json({
-        data: sanitizeProduct(product)
-    });
-});
+    let discountPercent = 0;
+    if (price && priceAfterDiscount && price > priceAfterDiscount) {
+        discountPercent = Math.round(((price - priceAfterDiscount) / price) * 100);
+    }
 
-// @desc    Get all Products
-// @route   GET /api/products
-// @access  Public
-export const getProducts = asyncHandler(async (req, res) => {
-    const totalproducts = await Product.countDocuments();
+    const productData = {
+        name,
+        slug,
+        description,
+        seller: userId,
+        sku,
+        model,
+        category,
+        subCategory,
+        brand,
+        price,
+        priceAfterDiscount,
+        discountPercent,
+        quantity,
+        sold,
+        availability,
+        ratingsAverage,
+        ratingsQuantity,
+        imageCover,
+        images,
+        features,
+        colors,
+        memory,
+        storage,
+        tags,
+        size,
+        weight,
+        shippingInfo,
+    };
 
-    const features = new ApiFeatures(Product.find(), req.query)
+    const product = await Product.create(productData);
+
+    return product;
+};
+
+export const getProductsService = async (req, isSellerRoute) => {
+    const filter = isSellerRoute ? { seller: req.user._id } : {};
+
+    const totalProducts = await Product.countDocuments(filter);
+
+    const features = new ApiFeatures(Product.find(filter).populate('seller', '_id userName'), req.query)
         .filter()
         .sort()
         .limitFields()
-        .search(['title', 'description'])
-        .paginate(totalproducts)
+        .search(['name', 'tags', 'description'])
+        .paginate(totalProducts);
 
     const products = await features.mongooseQuery.exec();
 
-    res.status(200).json({
-        success: true,
+    return {
+        totalProducts,
         pagination: features.paginationResult,
-        data: products.map(sanitizeProduct)
-    });
-});
+        products
+    };
+};
 
-// @desc    Get a product
-// @route   GET /api/products/:id
-// @access  Public
-export const getProduct = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
-    let query = Product.findById(id);
-    const product = await query;
-    if (!product) {
-        return next(new ApiError(`No product found with the ID ${id}.`, 404));
-    }
-    res.status(200).json({
-        data: sanitizeProduct(product)
-    });
-});
+export const getProductService = async (productId) => {
+    const product = await Product.findById(productId).populate('seller', '_id userName');
 
-// @desc    Update a product
-// @route   PUT /api/products/:id
-// @access  Private
-export const updateProduct = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const product = await Product.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
     if (!product) {
-        return next(new ApiError(`No product found with this ID ${id}`, 404));
+        throw new ApiError('Product not found', 404);
     }
 
-    product.save();
+    return product;
+};
 
-    res.status(200).json({
-        data: sanitizeProduct(product)
-    });
-});
+export const updateProductService = async (userId, productId, updates) => {
+    const user = await User.findById(userId);
+    const product = await Product.findById(productId);
 
-// @desc    Delete a product
-// @route   PUT /api/products/:id
-// @access  Private
-export const deleteProduct = asyncHandler(async (req, res, next) => {
-    const { id } = req.params;
-    const product = await Product.findOneAndDelete({ _id: id });
     if (!product) {
-        return next(new ApiError(`No prodcut found with ID: ${id}`, 404));
+        throw new ApiError('Product not found.', 404);
     }
 
-    res.status(204).end();
-});
+    if (user.role === 'seller' && product.seller.toString() !== userId.toString()) {
+        throw new ApiError('You can only update you own products.', 403);
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(productId, updates, { new: true, runValidators: true }).populate('seller', '_id userName');
+
+    return updatedProduct;
+};
+
+export const deleteProductService = async (userId, productId) => {
+    const user = await User.findById(userId);
+    const product = await Product.findById(productId);
+
+    if (!product) {
+        throw new ApiError('Product not found', 404);
+    }
+
+    if (user.role === 'seller' && product.seller.toString() !== userId.toString()) {
+        throw new ApiError('You can only delete your own products.', 403);
+    }
+
+    await Product.findByIdAndDelete(productId);
+
+    return true;
+};

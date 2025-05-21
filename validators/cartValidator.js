@@ -1,52 +1,66 @@
-import { check, body } from 'express-validator';
-import validatorMiddleware from '../middleware/validatorMiddleware.js';
-import ApiError from '../utils/apiError.js';
-import Product from '../models/productModel.js';
+import { param, body } from 'express-validator';
+import validatorMiddleware from '../middlewares/validatorMiddleware.js';
 
 export const addProductToCartValidator = [
     body('productId')
         .notEmpty()
-        .withMessage('Product ID is required')
+        .withMessage('Product ID is required.')
         .isMongoId()
-        .withMessage('Invalid Product ID format')
-        .custom(async (productId) => {
-            const product = await Product.findById(productId);
-            if (!product) {
-                return Promise.reject(new ApiError('Product not found', 404));
-            }
-        }),
+        .withMessage('Invalid Product ID format.'),
+
+    body('color')
+        .notEmpty()
+        .withMessage('Color is required.')
+        .isString()
+        .withMessage('Color must be a string.'),
+
+    body('amount')
+        .notEmpty()
+        .withMessage('Amount is required')
+        .isInt({ min: 1, max: 100 })
+        .withMessage('Amount must be an integer between 1 and 100'),
+
+    validatorMiddleware
+];
+
+export const updateCartItemValidator = [
+    param('itemId')
+        .isMongoId()
+        .withMessage('Invalid cart item ID format.'),
+
+    body('amount')
+        .optional()
+        .isInt({ min: 1, max: 100 })
+        .withMessage('Amount must be between 1 and 100.'),
 
     body('color')
         .optional()
         .isString()
-        .withMessage('Color must be a string'),
+        .withMessage('Color must be a string.'),
 
     validatorMiddleware
 ];
 
 export const removeCartItemValidator = [
-    check('itemId')
+    param('itemId')
         .isMongoId()
-        .withMessage('Invalid cart item ID format'),
+        .withMessage('Invalid cart item ID format.'),
 
     validatorMiddleware
 ];
 
-export const getCartValidator = [
-    check('userId')
-        .optional()
+export const clearCartValidator = [
+    param('cartId')
         .isMongoId()
-        .withMessage('Invalid user ID format'),
+        .withMessage('Invalid cart ID format.'),
 
     validatorMiddleware
 ];
 
 export const applyCouponValidator = [
-    check('coupon')
+    body('coupon')
         .notEmpty()
-        .withMessage('Coupon code is required')
-        .isLength({ min: 3, max: 20 })
-        .withMessage('Coupon code must be between 3 and 20 characters'),
+        .withMessage('Coupon code is required.'),
 
     validatorMiddleware
 ];

@@ -1,53 +1,45 @@
-import asyncHandler from "express-async-handler";
+import ApiError from '../utils/apiError.js';
 import User from '../models/userModel.js';
+import Product from '../models/productModel.js';
 
-// @desc    Add product to wishlist
-// @route   POST /api/wishlist
-// @access  Protected/User
-export const addProductToWishlist = asyncHandler(async (req, res, next) => {
-    const user = await User.findByIdAndUpdate(
-        req.user._id,
+export const addProductToWishlistService = async (userId, productId) => {
+    const product = await Product.findById(productId);
 
-        { $addToSet: { wishlist: req.body.productId } },
+    if (!product) {
+        throw new ApiError(`Product not found.`, 404);
+    }
 
-        { new: true },
-    );
+    const user = await User.findById(userId);
 
-    res.status(200).json({
-        status: 'Sucess',
-        message: 'Prodcut added successfully to wishlist.',
-        data: user.wishlist,
-    });
-});
+    if (user.wishlist.includes(productId)) {
+        throw new ApiError(`Product already exist in your wishlist.`, 400);
+    }
 
-// @desc    remove product from wishlist
-// @route   DELETE /api/wishlist/:productId
-// @access  Protected/User
-export const removeProductFromWishlist = asyncHandler(async (req, res, next) => {
-    const user = await User.findByIdAndUpdate(
-        req.user._id,
+    const updatedUser = await User.findByIdAndUpdate(userId, { $addToSet: { wishlist: productId } }, { new: true, runValidators: true }).populate('wishlist');
+    
+    return updatedUser;
+};
 
-        { $pull: { wishlist: req.params.productId } },
+export const getUserWishlistService = async (userId) => {
+    const user = await User.findById(userId).populate('wishlist');
+    
+    return user;
+};
 
-        { new: true },
-    );
+export const removeProductFromWishlistService = async (userId, productId) => {
+    const product = await Product.findById(productId);
 
-    res.status(200).json({
-        status: 'Sucess',
-        message: 'Prodcut removed successfully from wishlist.',
-        data: user.wishlist,
-    });
-});
+    if (!product) {
+        throw new ApiError(`Product not found.`, 404);
+    }
 
-// @desc    Get logged user wishlist
-// @route   GET /api/wishlist
-// @access  Protected/User
-export const getLoggedUserWishlist = asyncHandler(async (req, res, next) => {
-    const user = await User.findById(req.user._id).populate('wishlist');
+    const user = await User.findById(userId);
 
-    res.status(200).json({
-        status: 'success',
-        results: user.wishlist.length,
-        data: user.wishlist
-    });
-});
+    if (!user || !user.wishlist.includes(productId)) {
+        throw new ApiError(`Product not found in your wishlist.`, 404);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, { $pull: { wishlist: productId } }, { new: true, runValidators: true }).populate('wishlist');
+    
+    return updatedUser;
+};

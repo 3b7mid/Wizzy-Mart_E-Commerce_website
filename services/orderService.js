@@ -1,357 +1,401 @@
-import asyncHandler from 'express-async-handler';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
-import { sanitizeOrder, sanitizeshippingPrice } from '../utils/sanitizeData.js';
 import Stripe from 'stripe';
 import Product from '../models/productModel.js';
 import Cart from '../models/cartModel.js';
 import User from '../models/userModel.js';
-import globalShippingPrice from '../models/shippingPriceModel.js';
 import Order from '../models/orderModel.js';
 
-const calculateTotalOrderPrice = (cart) => {
-    const discountPrice = cart.totalPriceAfterDiscount;
-    const cartPrice = cart.totalCartPrice;
-
-    if (typeof discountPrice === 'number' && !isNaN(discountPrice)) {
-        return discountPrice;
-    } else if (typeof cartPrice === 'number' && !isNaN(cartPrice)) {
-        return cartPrice;
-    }
-    return 0;
+// Helper function to calculate total order price based on order items
+const calculateTotalOrderPrice = (order) => {
+    let total = 0;
+    order.cartItems.forEach(item => { total += item.price * item.amount; });
+    return order.totalOrderPriceAfterDiscount !== undefined && order.totalOrderPriceAfterDiscount !== null
+        ? order.totalOrderPriceAfterDiscount
+        : total;
 };
 
-// @desc Create direct order
-// @route POST /api/orders/direct-order
-// @access Protected/User
-// export const createDirectOrder = asyncHandler(async (req, res, next) => {
-//     const { cartItems, shippingAddress } = req.body;
-//     if (!cartItems || cartItems.length === 0) {
-//         return next(new ApiError('No products provided', 400));
-//     }
-
-//     const productIds = cartItems.map((item) => item.product);
-//     const products = await Product.find({ _id: { $in: productIds } });
-
-//     if (products.length !== cartItems.length) {
-//         return next(new ApiError('Some products do not exist', 400));
-//     }
-
-//     let totalOrderPrice = 0;
-//     let updatedCartItems = [];
-
-//     for (const item of cartItems) {
-//         const product = products.find((p) => String(p._id) === String(item.product));
-//         if (!product) {
-//             return next(new ApiError(`Product not found: ${item.product}`, 404));
-//         }
-//         if (product.quantity < item.amount) {
-//             return next(
-//                 new ApiError(
-//                     `Insufficient stock for "${product.title}". Available: ${product.quantity}, Requested: ${item.amount}`,
-//                     400
-//                 )
-//             );
-//         }
-
-//         totalOrderPrice += product.price * item.amount;
-
-//         updatedCartItems.push({
-//             product: item.product,
-//             amount: item.amount,
-//             color: item.color,
-//             price: product.price
-//         });
-//     }
-
-//     let shippingPrice = 0;
-//     try {
-//         const shipPrice = await globalShippingPrice.findOne();
-//         if (shipPrice && shipPrice.shippingPrice) {
-//             shippingPrice = shipPrice.shippingPrice;
-//         }
-//     } catch (error) {
-//         return next(new ApiError('Error fetching shipping price', 500));
-//     }
-
-//     totalOrderPrice += shippingPrice;
-
-//     const newOrder = await Order.create({
-//         user: req.user._id,
-//         cartItems: updatedCartItems,
-//         shippingAddress,
-//         totalOrderPrice,
-//         shippingPrice,
-//         paymentMethodType: 'cash',
-//         isPaid: false
-//     });
-
-//     const bulkOption = cartItems.map((item) => ({
-//         updateOne: {
-//             filter: { _id: item.product },
-//             update: { $inc: { quantity: -item.amount, sold: +item.amount } }
-//         }
-//     }));
-
-//     if (bulkOption.length > 0) {
-//         await Product.bulkWrite(bulkOption, {});
-//     }
-
-//     await newOrder.populate({
-//         path: 'user',
-//         select: '_id name email'
-//     });
-
-//     res.status(201).json({
-//         status: 'success',
-//         data: sanitizeOrder(newOrder)
-//     });
-// });
-
-// @desc    Create cash order
-// @route   POST /api/orders/cartId
-// @access  Protected/User
-export const createCashOrder = asyncHandler(async (req, res, next) => {
-    const { cartId } = req.params;
-    const shipPrice = await globalShippingPrice.findOne();
-    const shippingPrice = shipPrice ? shipPrice.shippingPrice : 0;
+export const createCashOrderService = async ({ userId, cartId, billingInfo, orderNotes }) => {
     const cart = await Cart.findById(cartId);
     if (!cart) {
-        return next(new ApiError(`There is no such cart with ID: ${cartId}`, 404));
+        throw new ApiError('Cart not found', 404);
     }
 
-    const totalOrderPrice = calculateTotalOrderPrice(cart) + shippingPrice;
+    const shippingPrice = 0;
 
-    const order = await Order.create({
-        user: req.user._id,
-        cartItems: cart.cartItems,
-        shippingAddress: req.body.shippingAddress,
-        shippingPrice,
-        totalOrderPrice,
+    const order = new Order({
+        user: userId,
+        orderID: Math.floor(100000 + Math.random() * 900000).toString(),
+        cartItems: cart.cartItems.map(item => ({
+            product: item.product,
+            amount: item.amount,
+            price: item.price,
+            color: item.color
+        })),
+        billingInfo,
+        orderNotes,
+        shippingPrice: shippingPrice,
+        totalOrderPriceAfterDiscount: cart.totalPriceAfterDiscount,
         paymentMethodType: 'cash',
-        isPaid: false
+        isPaid: false,
+        status: 'pending'
     });
 
+    const itemsTotalAfterDiscount = calculateTotalOrderPrice(order);
+
+    order.totalOrderPrice = itemsTotalAfterDiscount + shippingPrice;
+
+    await order.save();
+
     if (order) {
-        const bulkOption = cart.cartItems.map((item) => ({
+        const bulkOption = order.cartItems.map((item) => ({
             updateOne: {
                 filter: { _id: item.product },
                 update: { $inc: { quantity: -item.amount, sold: +item.amount } }
             }
         }));
-
         await Product.bulkWrite(bulkOption, {});
 
         await Cart.findByIdAndDelete(cartId);
     }
 
-    await order.populate({
-        path: 'user',
-        select: '_id name email'
+    const populatedOrder = await Order.findById(order._id)
+        .populate({
+            path: 'user',
+            select: '_id userName email'
+        })
+        .populate({
+            path: 'cartItems.product',
+            select: 'name imageCover'
+        });
+
+    return populatedOrder;
+};
+
+export const getOrdersService = async (user, query, { isUserRoute = false, isSellerRoute = false }) => {
+    let orders = [];
+    let totalOrders = 0;
+
+    if (!isUserRoute && !isSellerRoute && user.role === 'admin') {
+        totalOrders = await Order.countDocuments();
+
+        const features = new ApiFeatures(Order.find().populate('user', '_id userName email'), query)
+            .filter()
+            .sort()
+            .limitFields()
+            .search()
+            .paginate(totalOrders);
+
+        orders = await features.mongooseQuery.exec();
+
+        return {
+            totalOrders,
+            pagination: features.paginationResult,
+            orders
+        };
+    }
+
+    if (isUserRoute || user.role === 'user') {
+        totalOrders = await Order.countDocuments({ user: user._id });
+
+        const features = new ApiFeatures(Order.find({ user: user._id }).populate('user', 'userName email -_id'), query)
+            .paginate(totalOrders);
+
+        orders = await features.mongooseQuery.exec();
+
+        return {
+            totalOrders,
+            pagination: features.paginationResult,
+            orders
+        };
+    }
+
+    if (isSellerRoute || user.role === 'seller') {
+        const allOrders = await Order.find()
+            .populate('user', '_id userName email')
+            .populate({
+                path: 'cartItems.product',
+                select: 'name imageCover seller',
+                populate: {
+                    path: 'seller',
+                    select: '_id userName email'
+                }
+            });
+
+        const sellerOrders = allOrders.filter(order =>
+            order.cartItems.some(item =>
+                item.product?.seller?._id?.toString() === user._id.toString()
+            ));
+
+        totalOrders = sellerOrders.length;
+
+        const features = new ApiFeatures(Order.find({
+            _id: { $in: sellerOrders.map(order => order._id) }
+        }).populate('user', '_id userName email')
+          .populate({
+              path: 'cartItems.product',
+              select: 'name imageCover seller',
+              populate: {
+                  path: 'seller',
+                  select: '_id userName email'
+              }
+          }), query)
+            .filter()
+            .sort()
+            .limitFields()
+            .paginate(totalOrders);
+
+        orders = await features.mongooseQuery.exec();
+
+        return {
+            totalOrders,
+            pagination: features.paginationResult,
+            orders
+        };
+    }
+
+    throw new ApiError('Unauthorized access to orders', 403);
+};
+
+export const getOrderService = async (user, orderId, { isUserRoute = false, isSellerRoute = false }) => {
+    const order = await Order.findById(orderId)
+        .populate('user', '_id userName email')
+        .populate({
+            path: 'cartItems.product',
+            select: 'name imageCover seller',
+            populate: {
+                path: 'seller',
+                select: '_id userName email'
+            }
+        });
+
+    if (!order) {
+        throw new ApiError('Order not found', 404);
+    }
+
+    if (isUserRoute || user.role === 'user') {
+        if (order.user._id.toString() !== user._id.toString()) {
+            throw new ApiError('You are not authorized to view this order', 403);
+        }
+    }
+
+    if (isSellerRoute || user.role === 'seller') {
+        const isSellerAuthorized = order.cartItems.some(item =>
+            item.product?.seller?._id?.toString() === user._id.toString()
+        );
+
+        if (!isSellerAuthorized) {
+            throw new ApiError('You are not authorized to view this order', 403);
+        }
+    }
+
+    if (!isUserRoute && !isSellerRoute && user.role !== 'admin') {
+        throw new ApiError('Unauthorized access to orders', 403);
+    }
+
+    return order;
+};
+
+export const updateOrderDetailsService = async (orderId, updateData) => {
+    const allowedUpdates = ['status', 'isPaid', 'paidAt', 'isDelivered', 'deliveredAt'];
+    const updateKeys = Object.keys(updateData);
+    const invalidFields = updateKeys.filter((key) => !allowedUpdates.includes(key));
+
+    if (invalidFields.length > 0) {
+        throw new ApiError(`You can only update these fields: [${allowedUpdates.join(', ')}]`, 400);
+    }
+
+    const updates = Object.fromEntries(
+        Object.entries(updateData).filter(([key]) => allowedUpdates.includes(key))
+    );
+
+    if (updates.isPaid) {
+        updates.paidAt = Date.now();
+    }
+
+    if (updates.isDelivered) {
+        updates.deliveredAt = Date.now();
+    }
+
+    const order = await Order.findByIdAndUpdate(orderId, updates, {
+        new: true,
+        runValidators: true
     });
 
-    res.status(201).json({
-        status: 'success',
-        data: sanitizeOrder(order)
-    });
-});
+    if (!order) {
+        throw new ApiError('Order not found.', 404);
+    }
 
-// @desc    Get all orders
-// @route   GET /api/orders
-// @access  Protect/Admin
-export const getAllOrders = asyncHandler(async (req, res, next) => {
-    const totalOrders = await Order.countDocuments();
-    const features = new ApiFeatures(Order.find().populate('user', '_id name email'), req.query)
-        .filter()
-        .sort()
-        .limitFields()
-        .search()
-        .paginate(totalOrders)
+    return order;
+};
 
-    const orders = await features.mongooseQuery.exec();
-
-    res.status(200).json({
-        results: orders.length,
-        pagination: features.paginationResult,
-        data: orders.map(sanitizeOrder)
-    });
-});
-
-// @desc    Get all user orders
-// @route   GET /api/orders/my-orders
-// @access  Protect/User/Admin
-export const getAllUserOrders = asyncHandler(async (req, res, next) => {
-    const totalOrders = await Order.countDocuments();
-    const features = new ApiFeatures(Order.find({ user: req.user._id }).populate('user', 'name email -_id'), req.query).paginate(totalOrders);
-
-    const orders = await features.mongooseQuery.exec();
-
-    res.status(200).json({
-        results: orders.length,
-        pagination: features.paginationResult,
-        data: orders.map(sanitizeOrder)
-    });
-});
-
-// @desc    Update order paid status to paid
-// @route   PUT /api/orders/:id/pay
-// @access  Protected/Admin
-export const updateOrderToPaid = asyncHandler(async (req, res, next) => {
-    const { orderId } = req.params;
+export const deleteOrderService = async (user, orderId) => {
     const order = await Order.findById(orderId);
     if (!order) {
-        return next(new ApiError(`There is no such a order with this ID: ${orderId}`, 404));
+        throw new ApiError('Order not found.', 404);
     }
 
-    order.isPaid = true;
-    order.paidAt = Date.now();
+    if (user.role === 'seller') {
+        const isSellerAuthorized = order.cartItems.every(item =>
+            item.product?.seller?.toString() === user._id.toString()
+        );
 
-    const updateOrder = await order.save();
-
-    res.status(200).json({
-        status: 'success',
-        data: sanitizeOrder(updateOrder)
-    });
-});
-
-// @desc    Update order delivered status
-// @route   PUT /api/orders/:id/deliver
-// @access  Protected/Admin
-export const updateOrderToDelivered = asyncHandler(async (req, res, next) => {
-    const { orderId } = req.params;
-    const order = await Order.findById(orderId);
-    if (!order) {
-        return next(new ApiError(`There is no such a order with this ID: ${orderId}`, 404));
+        if (!isSellerAuthorized) {
+            throw new ApiError('You can only cancel orders containing your own products.', 403);
+        }
     }
 
-    order.isDelivered = true;
-    order.deliveredAt = Date.now();
+    if (user.role === 'user') {
+        if (order.user.toString() !== user._id.toString()) {
+            throw new ApiError('Unauthorized to delete this order.', 403);
+        }
 
-    const updateOrder = await order.save();
+        const orderTime = new Date(order.createdAt);
+        const currentTime = new Date();
+        const timeDifference = (currentTime - orderTime) / (1000 * 60 * 60);
 
-    res.status(200).json({
-        status: 'success',
-        data: sanitizeOrder(updateOrder)
-    });
-});
-
-// @desc    Delete order
-// @route   DELETE api/orders/id
-// @access  Protect Admin/User
-export const deleteOrder = asyncHandler(async (req, res, next) => {
-    const { orderId } = req.params;
-    const order = await Order.findById(orderId);
-    if (!order) {
-        return next(new ApiError(`There is no such order with this ID: ${orderId}`, 404));
+        if (timeDifference > 1) {
+            throw new ApiError('You can only delete orders within 1 hour.', 400);
+        }
     }
 
-    if (req.user.role !== 'admin' && String(order.user) !== req.user.id) {
-        return next(new ApiError('Unauthorized to delete this order', 403));
-    }
-
-    if (req.user.role === 'admin') {
-        await Order.findByIdAndDelete(orderId);
-        return res.status(200).end();
-    }
-
-    const orderTime = new Date(order.createdAt);
-    const currentTime = new Date();
-    const timeDifference = (currentTime - orderTime) / (1000 * 60 * 60);
-    if (timeDifference > 1) {
-        return next(new ApiError('You can only delete orderss within 1 hour', 400));
-    }
+    const bulkOption = order.cartItems.map((item) => ({
+        updateOne: {
+            filter: { _id: item.product },
+            update: { $inc: { quantity: +item.amount, sold: -item.amount } }
+        }
+    }));
+    await Product.bulkWrite(bulkOption, {});
 
     await Order.findByIdAndDelete(orderId);
 
-    return res.status(200).end();
-});
+    return true;
+};
 
-// @desc    Get checkout session from stipe and send it as response
-// @route   DELETE api/orders/checkout-session/cartId
-// @access  Protect/User
-export const checkoutSession = asyncHandler(async (req, res, next) => {
-    const { cartId } = req.params;
-    const cart = await Cart.findById(cartId).populate("cartItems.product");
+export const checkoutSession = async (req) => {
+    try {
+        const { cartId } = req.params;
+        const cart = await Cart.findById(cartId).populate("cartItems.product");
 
-    if (!cart) return next(new ApiError(`No cart found with ID: ${cartId}`, 404));
+        if (!cart) {
+            throw new ApiError(`Cart not found`, 404);
+        }
 
-    const shipping = await globalShippingPrice.findOne();
-    const shippingPrice = shipping?.shippingPrice || 0;
+        if (cart.cartItems.length === 0) {
+            throw new ApiError(`Cart is empty`, 400);
+        }
 
-    const cartPrice = cart.totalPriceAfterDiscount ?? cart.totalCartPrice ?? 0;
-    const totalOrderPrice = cartPrice + shippingPrice;
+        const shippingPrice = 0;
+        const cartPrice = cart.totalPriceAfterDiscount ?? cart.totalCartPrice ?? 0;
+        const totalOrderPrice = cartPrice + shippingPrice;
 
-    if (isNaN(totalOrderPrice)) {
-        return next(new ApiError('Invalid total order price', 400));
-    }
+        if (isNaN(totalOrderPrice) || totalOrderPrice <= 0) {
+            throw new ApiError('Invalid total order price', 400);
+        }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+        if (!process.env.STRIPE_SECRET_KEY) {
+            throw new ApiError('Stripe secret key is not configured', 500);
+        }
 
-    const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: [{
-            price_data: {
-                currency: 'egp',
-                product_data: {
-                    name: `Order from ${req.user.name}`,
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'egp',
+                    product_data: {
+                        name: `Order from ${req.user.userName}`,
+                    },
+                    unit_amount: Math.round(totalOrderPrice * 100),
                 },
-                unit_amount: Math.round(totalOrderPrice * 100),
+                quantity: 1,
+            }],
+            mode: 'payment',
+            success_url: `${req.protocol}://${req.get('host')}/orders`,
+            cancel_url: `${req.protocol}://${req.get('host')}/cart`,
+            customer_email: req.user.email,
+            client_reference_id: cartId,
+            metadata: {
+                firstName: `${req.body.billingInfo?.firstName || ''}`,
+                lastName: `${req.body.billingInfo?.lastName || ''}`,
+                addressLine: `${req.body.billingInfo?.addressLine || ''}`,
+                company: `${req.body.billingInfo?.company || ''}`,
+                country: `${req.body.billingInfo?.country || ''}`,
+                state: `${req.body.billingInfo?.state || ''}`,
+                city: `${req.body.billingInfo?.city || ''}`,
+                zipCode: `${req.body.billingInfo?.zipCode || ''}`,
+                email: `${req.body.billingInfo?.email || ''}`,
+                phoneNumber: `${req.body.billingInfo?.phoneNumber || ''}`,
             },
-            quantity: 1,
-        }],
-        mode: 'payment',
-        success_url: `${req.protocol}://${req.get('host')}/orders`,
-        cancel_url: `${req.protocol}://${req.get('host')}/cart`,
-        customer_email: req.user.email,
-        client_reference_id: cartId,
-        metadata: {
-            address: req.body.shippingAddress?.address || '',
-            phone: req.body.shippingAddress?.phone || '',
-            city: req.body.shippingAddress?.city || '',
-        },
-    });
+        });
 
-    res.status(200).json({ status: 'success', session });
-});
-
-const createCardOrder = async (session) => {
-    const cartId = session.client_reference_id;
-    const shippingAddress = session.metadata;
-    const orderPrice = session.amount_total / 100;
-
-    const cart = await Cart.findById(cartId);
-    if (!cart) return;
-    const user = await User.findOne({ email: session.customer_email });
-    if (!user) return;
-
-    const order = await Order.create({
-        user: user._id,
-        cartItems: cart.cartItems,
-        shippingAddress,
-        totalOrderPrice: orderPrice,
-        isPaid: true,
-        paidAt: Date.now(),
-        paymentMethodType: 'card',
-    });
-
-    if (order) {
-        const bulkOption = cart.cartItems.map((item) => ({
-            updateOne: {
-                filter: { _id: item.product },
-                update: { $inc: { quantity: -item.amount, sold: +item.amount } },
-            },
-        }));
-        await Product.bulkWrite(bulkOption, {});
-
-        await Cart.findByIdAndDelete(cartId);
+        return {
+            success: true,
+            session
+        };
+    } catch (error) {
+        console.error('Stripe session creation error:', error);
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(error.message || 'Failed to create checkout session', error.statusCode || 500);
     }
 };
 
-// @desc    This webhook will run when stripe payment success paid
-// @route   POST /webhook-checkout
-// @access  Protected/User
-export const webhookCheckout = asyncHandler(async (req, res, next) => {
+const createCardOrder = async (session) => {
+    try {
+        const cartId = session.client_reference_id;
+        const orderPrice = session.amount_total / 100;
+
+        const cart = await Cart.findById(cartId);
+        if (!cart) {
+            console.error(`Cart not found for session: ${session.id}`);
+            return null;
+        }
+
+        const user = await User.findOne({ email: session.customer_email });
+        if (!user) {
+            console.error(`User not found for email: ${session.customer_email}`);
+            return null;
+        }
+
+        const order = await Order.create({
+            user: user._id,
+            orderID: Math.floor(100000 + Math.random() * 900000).toString(),
+            cartItems: cart.cartItems,
+            billingInfo: session.metadata,
+            totalOrderPrice: orderPrice,
+            isPaid: true,
+            paidAt: Date.now(),
+            paymentMethodType: 'card',
+            status: 'processing'
+        });
+
+        if (order) {
+            const bulkOption = cart.cartItems.map((item) => ({
+                updateOne: {
+                    filter: { _id: item.product },
+                    update: { $inc: { quantity: -item.amount, sold: +item.amount } },
+                },
+            }));
+            await Product.bulkWrite(bulkOption, {});
+
+            await Cart.findByIdAndDelete(cartId);
+            return order;
+        }
+    } catch (error) {
+        console.error('Error creating card order:', error);
+        return null;
+    }
+};
+
+export const webhookCheckout = async (req) => {
     const sig = req.headers['stripe-signature'];
+
+    if (!sig) {
+        throw new ApiError('Missing stripe-signature header', 400);
+    }
 
     let event;
 
@@ -362,57 +406,21 @@ export const webhookCheckout = asyncHandler(async (req, res, next) => {
             process.env.STRIPE_WEBHOOK_KEY
         );
     } catch (err) {
-        return res.status(400).send(`Webhook Error: ${err.message}`);
+        console.error('Webhook signature verification failed:', err);
+        throw new ApiError(`Webhook Error: ${err.message}`, 400);
     }
 
     if (event.type === 'checkout.session.completed') {
-        await createCardOrder(event.data.object);
+        const order = await createCardOrder(event.data.object);
+
+        if (!order) {
+            console.error('Failed to create order from webhook:', event.data.object);
+            throw new ApiError('Failed to create order', 500);
+        }
     }
 
-    res.status(200).json({ received: true });
-});
-
-// @desc    Update Global shipping Price
-// @route   PUT /api/global-shipping
-// @access  Protected/Admin
-export const updateGlobalShippingPrice = asyncHandler(async (req, res, next) => {
-    const { shippingPrice } = req.body;
-
-    let price = await globalShippingPrice.findOne();
-    if (!price) {
-        price = new globalShippingPrice({ shippingPrice });
-    }
-    else {
-        price.shippingPrice = shippingPrice;
-    }
-
-    await price.save();
-
-    res.status(200).json({
-        status: 'success',
-        data: sanitizeshippingPrice(price)
-    });
-});
-
-// @desc    Update Global shipping Price
-// @route   PUT /api/:id/shipping
-// @access  Protected/Admin
-export const updateShippingPrice = asyncHandler(async (req, res, next) => {
-    const { shippingPrice } = req.body;
-
-    const order = await Order.findById(req.params.id);
-    if (!order) {
-        return next(new ApiError('Order not found', 404));
-    }
-
-    const updatedTotalOrderPrice = order.totalOrderPrice + (shippingPrice - order.shippingPrice);
-
-    order.shippingPrice = shippingPrice;
-    order.totalOrderPrice = updatedTotalOrderPrice;
-    await order.save();
-
-    res.status(200).json({
-        status: 'success',
-        data: sanitizeOrder(order)
-    });
-});
+    return {
+        success: true,
+        received: true
+    };
+};

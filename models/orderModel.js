@@ -1,9 +1,15 @@
 import mongoose from 'mongoose';
+import { addressSchema } from './userModel.js';
 
 const orderSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+    },
+    orderID: {
+        type: String,
+        unique: true,
+        sparse: true,
     },
     cartItems: {
         type:
@@ -17,19 +23,13 @@ const orderSchema = new mongoose.Schema({
                         type: Number,
                         default: 1
                     },
-                    price: {
-                        type: Number,
-                    },
+                    price: Number,
                     color: String
                 }
             ],
     },
-    shippingAddress: {
-        address: String,
-        phone: String,
-        city: String,
-        zipCode: String
-    },
+    billingInfo: addressSchema,
+    orderNotes: String,
     shippingPrice: {
         type: Number,
         default: 0
@@ -37,12 +37,17 @@ const orderSchema = new mongoose.Schema({
     totalOrderPrice: {
         type: Number
     },
-    totalPriceAfterDiscount: {
+    totalOrderPriceAfterDiscount: {
         type: Number
     },
     paymentMethodType: {
         type: String,
         enum: ['card', 'cash']
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
+        default: 'pending'
     },
     isPaid: {
         type: Boolean,

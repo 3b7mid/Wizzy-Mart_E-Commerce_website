@@ -1,76 +1,95 @@
-import { check, body } from 'express-validator';
+import { param, body } from 'express-validator';
 import slugify from 'slugify';
-import validatorMiddleware from '../middleware/validatorMiddleware.js';
+import validatorMiddleware from '../middlewares/validatorMiddleware.js';
 import ApiError from '../utils/apiError.js';
 import SubCategory from '../models/subCategoryModel.js';
 import Category from '../models/categoryModel.js';
-
-export const getBrandValidator = [
-    check('id')
-        .isMongoId()
-        .withMessage('Invalid brand ID format'),
-
-    validatorMiddleware
-];
+import Brand from '../models/brandModel.js';
 
 export const createBrandValidator = [
     body('name')
         .notEmpty()
-        .withMessage('Brand name is required')
-        .isLength({ min: 3 })
-        .withMessage('Brand name must be at least 3 characters long')
-        .isLength({ max: 32 })
-        .withMessage('Brand name must be at most 32 characters long')
-        .custom((val, { req }) => {
+        .withMessage('Brand name is required.')
+        .isLength({ min: 3, max: 32 })
+        .withMessage('Brand name must be between 3 and 32 characters.')
+        .custom(async (val, { req }) => {
             req.body.slug = slugify(val);
+            const brand = await Brand.findOne({ name: val });
+            if (brand) {
+                throw new ApiError('Brand name already exists.', 400);
+            }
             return true;
         }),
 
-    check('category')
+    body('category')
         .isMongoId()
-        .withMessage('Invalid category ID format')
-        .custom(async (categoryId) => {
-            const category = await Category.findById(categoryId);
+        .withMessage('Invalid category ID format.')
+        .custom(async (val) => {
+            const category = await Category.findById(val);
             if (!category) {
-                return Promise.reject(new ApiError('Category not found', 404));
+                throw new ApiError('Category not found.', 404);
             }
+            return true;
         }),
 
-    check('subCategories')
+    body('subCategory')
         .optional()
-        .isArray()
-        .withMessage('Subcategories must be an array')
-        .custom(async (subCategories) => {
-            for (const subCategoryId of subCategories) {
-                const subCategory = await SubCategory.findById(subCategoryId);
-                if (!subCategory) {
-                    return Promise.reject(new ApiError(`SubCategory not found: ${subCategoryId}`, 404));
-                }
+        .custom(async (val) => {
+            const subCategory = await SubCategory.findById(val);
+            if (!subCategory) {
+                throw new ApiError(`SubCategory not found.`, 404);
             }
+            return true;
         }),
 
     validatorMiddleware
 ];
 
 export const updateBrandValidator = [
-    check('id')
+    param('brandId')
         .isMongoId()
-        .withMessage('Invalid brand ID format'),
+        .withMessage('Invalid brand ID format.'),
 
     body('name')
         .optional()
-        .custom((val, { req }) => {
+        .custom(async (val, { req }) => {
             if (val) req.body.slug = slugify(val);
+            const brand = await Brand.findOne({ name: val });
+            if (brand) {
+                throw new ApiError('Brand name already exists.', 400);
+            }
+            return true;
+        }),
+
+    body('category')
+        .optional()
+        .isMongoId()
+        .withMessage('Invalid category ID format.')
+        .custom(async (val) => {
+            const category = await Category.findById(val);
+            if (!category) {
+                throw new ApiError('Category not found.', 404);
+            }
+            return true;
+        }),
+
+    body('subCategory')
+        .optional()
+        .custom(async (val) => {
+            const subCategory = await SubCategory.findById(val);
+            if (!subCategory) {
+                throw new ApiError(`SubCategory not found.`, 404);
+            }
             return true;
         }),
 
     validatorMiddleware
 ];
 
-export const deleteBrandValidator = [
-    check('id')
+export const BrandIDValidator = [
+    param('brandId')
         .isMongoId()
-        .withMessage('Invalid brand ID format'),
+        .withMessage('Invalid brand ID format.'),
 
     validatorMiddleware
 ];

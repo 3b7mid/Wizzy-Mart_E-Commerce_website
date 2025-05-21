@@ -1,36 +1,45 @@
-import { param, check } from 'express-validator';
-import validatorMiddleware from '../middleware/validatorMiddleware.js';
+import { param, body } from 'express-validator';
+import validatorMiddleware from '../middlewares/validatorMiddleware.js';
 import ApiError from '../utils/apiError.js';
 import Product from '../models/productModel.js';
 import Review from '../models/reviewModel.js';
+import Order from '../models/orderModel.js';
 
 export const createReviewValidator = [
-    check('title')
-        .optional(),
-
-    check('ratings')
+    body('ratings')
         .notEmpty()
-        .withMessage('Ratings value is required')
+        .withMessage('Ratings value is required.')
         .isFloat({ min: 1, max: 5 })
-        .withMessage('Ratings value must be between 1 and 5'),
+        .withMessage('Ratings value must be between 1 and 5.'),
+
+    body('feedback')
+        .notEmpty()
+        .withMessage('Feedback is required.'),
 
     param('productId')
         .isMongoId()
-        .withMessage('Invalid Product ID format')
+        .withMessage('Invalid Product ID format.')
         .custom(async (val, { req }) => {
             const product = await Product.findById(val);
             if (!product) {
-                throw new ApiError('Product not found', 400);
+                throw new ApiError('Product not found.', 404);
             }
-
             const existingReview = await Review.findOne({
                 user: req.user._id,
                 product: val
             });
-
             if (existingReview) {
-                throw new ApiError('You already created a review for this product', 401);
+                throw new ApiError('You have already reviewed this product.', 400);
             }
+            const order = await Order.findOne({
+                user: req.user._id,
+                'cartItems.product': val,
+                status: 'delivered'
+            });
+            if (!order) {
+                throw new ApiError('You must purchase and receive this product before reviewing it.', 403);
+            }
+            return true;
         }),
 
     validatorMiddleware
@@ -39,12 +48,13 @@ export const createReviewValidator = [
 export const getProductReviewsValidator = [
     param('productId')
         .isMongoId()
-        .withMessage('Invalid Product ID format')
-        .custom(async (val, { req }) => {
+        .withMessage('Invalid Product ID format.')
+        .custom(async (val) => {
             const product = await Product.findById(val);
             if (!product) {
-                throw new ApiError('Product not found', 400);
+                throw new ApiError('Product not found.', 404);
             }
+            return true;
         }),
 
     validatorMiddleware
@@ -53,64 +63,64 @@ export const getProductReviewsValidator = [
 export const getReviewValidator = [
     param('productId')
         .isMongoId()
-        .withMessage('Invalid Product ID format')
+        .withMessage('Invalid Product ID format.')
         .custom(async (val) => {
             const product = await Product.findById(val);
             if (!product) {
-                throw new ApiError(`Product with ID ${val} not found`, 404);
+                throw new ApiError('Product not found.', 404);
             }
+            return true;
         }),
 
     param('reviewId')
         .isMongoId()
-        .withMessage('Invalid Review ID format')
-        .custom(async (val, { req }) => {
-            const review = await Review.findOne({ _id: val, product: req.params.productId });
-            if (!review) {
-                throw new ApiError(`Review with ID ${val} not found for this product`, 404);
-            }
-        }),
+        .withMessage('Invalid Review ID format.'),
 
     validatorMiddleware
 ];
 
 export const updateReviewValidator = [
+    param('productId')
+        .isMongoId()
+        .withMessage('Invalid Product ID format.')
+        .custom(async (val) => {
+            const product = await Product.findById(val);
+            if (!product) {
+                throw new ApiError('Product not found.', 404);
+            }
+            return true;
+        }),
+
     param('reviewId')
         .isMongoId()
-        .withMessage('Invalid Review ID format')
-        .custom(async (val, { req }) => {
-            const review = await Review.findById(val);
-            if (!review) {
-                throw new ApiError(`There is no review with this ID: ${val}`, 404);
-            }
+        .withMessage('Invalid Review ID format.'),
 
-            if (review.user._id.toString() !== req.user._id.toString()) {
-                throw new ApiError('You are not allowed to perform this action', 403);
-            }
+    body('ratings')
+        .optional()
+        .isFloat({ min: 1, max: 5 })
+        .withMessage('Ratings value must be between 1 and 5.'),
 
-            if (review.product.toString() !== req.params.productId) {
-                throw new ApiError('Review does not belong to the specified product', 400);
-            }
-        }),
+    body('feedback')
+        .optional(),
+
     validatorMiddleware
 ];
 
 export const deleteReviewValidator = [
+    param('productId')
+        .isMongoId()
+        .withMessage('Invalid Product ID format.')
+        .custom(async (val) => {
+            const product = await Product.findById(val);
+            if (!product) {
+                throw new ApiError('Product not found.', 404);
+            }
+            return true;
+        }),
+
     param('reviewId')
         .isMongoId()
-        .withMessage('Invalid review ID format')
-        .custom(async (val, { req }) => {
-            if (req.user.role === 'admin') return true;
-
-            const review = await Review.findById(val);
-            if (!review) {
-                throw new Error(`There is no review with this ID: ${val}`);
-            }
-
-            if (review.user._id.toString() !== req.user._id.toString()) {
-                throw new Error('You are not allowed to perform this action');
-            }
-        }),
+        .withMessage('Invalid Review ID format.'),
 
     validatorMiddleware
 ];

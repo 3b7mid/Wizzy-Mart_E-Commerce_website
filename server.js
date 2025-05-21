@@ -3,14 +3,16 @@ import 'dotenv/config';
 import morgan from 'morgan';
 import compression from 'compression';
 import cors from 'cors';
+import helmet from 'helmet';
 import hpp from 'hpp';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
-import sanitizeMiddleware from './middleware/sanitizeMiddleware.js';
+import sanitizeMiddleware from './middlewares/sanitizeMiddleware.js';
+import { swaggerSetup } from './config/swagger.js';
 
 import dbConnection from './config/db.js';
 import ApiError from './utils/apiError.js';
-import errorHandler from './middleware/errorHandlerMiddleware.js';
+import errorHandler from './middlewares/errorHandlerMiddleware.js';
 import mountRoutes from './routes/index.js';
 import { webhookCheckout } from './services/orderService.js';
 
@@ -25,11 +27,13 @@ const app = express();
 
 app.use(cors());
 app.options('*', cors());
+app.use(helmet());
 app.use(compression());
 
 app.post('/webhook-checkout', express.raw({ type: 'application/json' }), webhookCheckout)
 
 app.use(express.json({ limit: '20kb' }));
+app.use(express.urlencoded({ extended: true }));
 
 app.use(mongoSanitize());
 app.use(sanitizeMiddleware);
@@ -57,6 +61,8 @@ if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
     console.log(`mode: ${process.env.NODE_ENV}`);
 };
+
+swaggerSetup(app);
 
 mountRoutes(app);
 

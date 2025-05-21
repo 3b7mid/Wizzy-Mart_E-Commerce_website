@@ -1,59 +1,66 @@
-import { check, body } from 'express-validator';
-import validatorMiddleware from '../middleware/validatorMiddleware.js';
-import bcrypt from 'bcrypt';
-import User from '../models/userModel.js';
+import { body, param } from 'express-validator';
+import validatorMiddleware from '../middlewares/validatorMiddleware.js';
+import ApiError from '../utils/apiError.js';
 
-export const getUserValidator = [
-    check('id')
-        .isMongoId()
-        .withMessage('Invalid user id format'),
-    validatorMiddleware
-];
+const validRoles = ['user', 'seller', 'admin'];
 
-export const deleteUserValidator = [
-    check('id')
-        .isMongoId()
-        .withMessage('Invalid user id format'),
-    validatorMiddleware,
-];
-
-export const changeUserPasswordValidator = [
-    check('userId')
-        .isMongoId()
-        .withMessage('Invalid user id format'),
-
-    body('currentPassword')
+export const createUserValidator = [
+    body('name')
         .notEmpty()
-        .withMessage('You must enter your current password'),
+        .withMessage('Name is required.')
+        .isLength({ min: 3, max: 50 })
+        .withMessage('name must be between 3 and 50 characters.'),
 
-    body('passwordConfirm')
+    body('email')
         .notEmpty()
-        .withMessage('You must enter the password confirm'),
+        .withMessage('Email is required.')
+        .isEmail()
+        .withMessage('Invalid email address.'),
 
     body('password')
         .notEmpty()
-        .withMessage('You must enter new password')
-        .custom(async (val, { req }) => {
-            const user = await User.findById(req.params.userId);
-            if (!user) {
-                throw new Error('User not found');
+        .withMessage('Password is required.')
+        .isLength({ min: 6 })
+        .withMessage('Password must be at least 6 characters.')
+        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/)
+        .withMessage('Password must include uppercase, lowercase, and a number.'),
+
+    body('role')
+        .notEmpty()
+        .withMessage('role is required')
+        .custom((val) => {
+            if (!validRoles.includes(val)) {
+                throw new ApiError(`Invalid role. valid roles are: ${validRoles.join(', ')}`);
             }
-
-            const isCorrectPassword = await bcrypt.compare(
-                req.body.currentPassword,
-                user.password
-            );
-
-            if (!isCorrectPassword) {
-                throw new Error('Incorrect current password');
-            }
-
-            if (val !== req.body.passwordConfirm) {
-                throw new Error('Password Confirmation incorrect');
-            }
-
             return true;
         }),
+
+    validatorMiddleware
+];
+
+export const updateUserRoleValidator = [
+    param('userId')
+        .isMongoId()
+        .withMessage('Invalid user ID format'),
+
+    body('role')
+        .notEmpty()
+        .withMessage('role is required')
+        .custom((val) => {
+            if (!validRoles.includes(val)) {
+                throw new ApiError(`Invalid role. valid roles are: ${validRoles.join(', ')}`, 400);
+            }
+            return true;
+        }),
+
+    validatorMiddleware
+];
+
+export const UserIdValidator = [
+    param('userId')
+        .isMongoId()
+        .withMessage('Invalid user ID format'),
+
     validatorMiddleware
 ];
 

@@ -4,17 +4,13 @@ const categorySchema = mongoose.Schema(
     {
         name: {
             type: String,
-            trim: true,
-            unique: [true, 'Category must be unique'],
+            trim: true
         },
         slug: {
             type: String,
             lowercase: true
         },
-        categoryImage: {
-            type: String,
-            required: true
-        },
+        categoryImage: String
     },
     { timestamps: true }
 );

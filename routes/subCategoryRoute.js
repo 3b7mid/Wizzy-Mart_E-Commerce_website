@@ -1,7 +1,7 @@
 import express from 'express';
-import { protect, allowedTo } from '../services/authService.js';
-import { createSubCategoryValidator, getSubCategoryValidator, updateSubCategoryValidator, deleteSubCategoryValidator } from '../validators/subCategoryValidator.js';
-import { createSubCategory, getSubCategories, getSubCategory, updateSubCategory, deleteSubCategory } from '../services/subCategoryService.js';
+import { protect, allowedTo } from '../middlewares/authMiddleware.js';
+import { createSubCategoryValidator, SubCategoryIDValidator, updateSubCategoryValidator } from '../validators/subCategoryValidator.js';
+import { createSubCategory, getSubCategories, getSubCategory, updateSubCategory, deleteSubCategory } from '../controllers/subCategoryController.js';
 
 const router = express.Router();
 
@@ -9,9 +9,9 @@ router.route('/')
     .get(getSubCategories)
     .post(protect, allowedTo('admin'), createSubCategoryValidator, createSubCategory);
 
-router.route('/:id')
-    .get(getSubCategoryValidator, getSubCategory)
+router.route('/:subcategoryId')
+    .get(SubCategoryIDValidator, getSubCategory)
     .put(protect, allowedTo('admin'), updateSubCategoryValidator, updateSubCategory)
-    .delete(protect, allowedTo('admin'), deleteSubCategoryValidator, deleteSubCategory)    
+    .delete(protect, allowedTo('admin'), SubCategoryIDValidator, deleteSubCategory)    
 
 export default router;

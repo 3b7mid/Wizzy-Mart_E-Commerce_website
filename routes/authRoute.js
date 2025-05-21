@@ -1,34 +1,50 @@
 import express from "express";
-import { signupValidator, loginValidator } from '../validators/authValidator.js';
-import { signup, verifyEmail, login, logout, forgetPassword, verifyResetToken, resetPassword, googleLogin, googleOAuthCallback, protect, allowedTo } from '../services/authService.js';
+import { signupValidator, resendVerificationCodeValidator, verifyEmailValidator, loginValidator, forgetPasswordValidator, resetPasswordValidator, updateUserValidator, changeUserPasswordValidator } from '../validators/authValidator.js';
+import { uploadSingleImage } from '../middlewares/multerMiddleware.js';
+import { resizeUserImage } from '../middlewares/cloudinaryMiddleware.js';
+import { protect } from '../middlewares/authMiddleware.js';
+import { signup, verifyEmail, resendVerificationCode, login, logout, forgetPassword, resetPassword, getMe, updateMe, changePassword } from '../controllers/authController.js';
 
 const router = express.Router();
 
-router.route('/google')
-    .post(googleLogin);
+router
+    .route('/signup')
+    .post(uploadSingleImage('profileImage'), resizeUserImage, signupValidator, signup);
 
-router.route('/google/callback')
-    .get(googleOAuthCallback)
+router
+    .route('/verify-email')
+    .post(verifyEmailValidator, verifyEmail)
 
-router.route('/signup')
-    .post(signupValidator, signup);
+router
+    .route('/resend-verificationCode')
+    .post(resendVerificationCodeValidator, resendVerificationCode);
 
-router.route('/verify-email')
-    .post(verifyEmail)        
-
-router.route('/login')
+router
+    .route('/login')
     .post(loginValidator, login);
 
-router.route('/logout')
-    .post(protect, allowedTo('user'), logout);
+router
+    .route('/logout')
+    .post(protect, logout);
 
-router.route('/forget-password')
-    .post(protect, allowedTo('user'), forgetPassword);
+router
+    .route('/forget-password')
+    .post(forgetPasswordValidator, forgetPassword); 
 
-router.route('/verify-resetCode')
-    .post(verifyResetToken);
+router
+    .route('/reset-password')
+    .put(resetPasswordValidator, resetPassword);
 
-router.route('/reset-password')
-    .put(resetPassword);
+router
+    .route('/getMe')
+    .get(protect, getMe);
+
+router
+    .route('/updateMe')
+    .put(protect, uploadSingleImage('profileImage'), resizeUserImage, updateUserValidator, updateMe);
+
+router
+    .route('/change-password')
+    .put(protect, changeUserPasswordValidator, changePassword);
 
 export default router;

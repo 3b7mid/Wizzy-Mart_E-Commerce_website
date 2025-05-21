@@ -1,84 +1,77 @@
-import asyncHandler from 'express-async-handler';
-import { sanitizeCoupon } from '../utils/sanitizeData.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import ApiError from '../utils/apiError.js';
 import Coupon from '../models/couponModel.js';
 
-// @desc    Get all coupons
-// @route   GET /api/v1/coupons
-// @access  Private/Admin-Manger
-export const getCoupons = asyncHandler(async (req, res) => {
-    const totalCopons = await Coupon.countDocuments();
+export const createCouponService = async (userId, { code, discount, expiresAt, type, minPurchase, maxDiscount, categories, products, description }) => {
+    const existingCoupon = await Coupon.findOne({ code: code.toUpperCase() });
 
-    const features = new ApiFeatures(Coupon.find(), req.query)
-        .paginate(totalCopons)
+    if (existingCoupon) {
+        throw new ApiError('Coupon code already exists.');
+    }
+
+    const coupon = await Coupon.create({
+        code: code.toUpperCase(),
+        discount,
+        expiresAt,
+        type,
+        minPurchase,
+        maxDiscount,
+        categories,
+        products,
+        description,
+        createdBy: userId
+    });
+
+    return coupon;
+};
+
+export const getCouponsService = async (query) => {
+    const totalCoupons = await Coupon.countDocuments();
+
+    const features = new ApiFeatures(Coupon.find(), query)
+        .paginate(totalCoupons)
         .filter()
-        .search(['code'])
+        .search(['code', 'description'])
         .limitFields()
         .sort();
 
-    const coupon = await features.mongooseQuery;
+    features.mongooseQuery = features.mongooseQuery.populate('categories', 'name').populate('products', 'name price').populate('createdBy', 'userName email');
 
-    res.status(200).json({
-        results: coupon.length,
+    const coupons = await features.mongooseQuery;
+
+    return {
+        totalCoupons,
         pagination: features.paginationResult,
-        data: coupon.map(sanitizeCoupon)
-    });
-});
+        coupons
+    };
+};
 
-// @desc    Get a coupon
-// @route   GET /api/v1/coupons/:id
-// @access  Private/Admin-Manger
-export const getCoupon = asyncHandler(async (req, res, next) => {
-    const { couponId } = req.params;
-    const coupon = await Coupon.findById(couponId);
-    if (!coupon) {
-        return next(new ApiError(`No coupon found with the ID ${couponId}`, 404));
+export const getCouponService = async (couponId) => {
+    const coupon = await Coupon.findById(couponId).populate('categories', 'name').populate('products', 'name price').populate('createdBy', 'userName email');
+
+    if (coupon) {
+        throw new ApiError('Coupon not found');
     }
 
-    res.status(200).json({
-        data: sanitizeCoupon(coupon)
-    });
-});
+    return coupon;
+};
 
-// @desc    Create a coupon
-// @route   POST /api/v1/coupons
-// @access  Private/Admin-Manger
-export const createCoupon = asyncHandler(async (req, res) => {
-    const coupon = await Coupon.create(req.body);
-    res.status(201).json({
-        data: sanitizeCoupon(coupon),
-    });
-});
+export const updateCouponService = async (couponId, updates) => {
+    const coupon = await Coupon.findByIdAndUpdate(couponId, updates, { new: true, runValidators: true });
 
-// @desc    Update a coupon
-// @route   PUT /api/v1/coupons/:id
-// @access  Private/Admin-Manger
-export const updateCoupon = asyncHandler(async (req, res, next) => {
-    const { couponId } = req.params;
-    const coupon = await Coupon.findByIdAndUpdate(
-        couponId,
-        req.body,
-        { new: true }
-    );
-    if (!coupon) {
-        return next(new ApiError(`No coupon found with the ID ${couponId}`, 404));
+    if (coupon) {
+        throw new ApiError('Coupon not found');
     }
 
-    res.status(200).json({
-        data: sanitizeCoupon(coupon)
-    });
-});
+    return coupon;
+};
 
-// @desc    Delete a coupon
-// @route   PUT /api/v1/coupon/:id
-// @access  Private/Admin-Manger
-export const deleteCoupon = asyncHandler(async (req, res, next) => {
-    const { couponId } = req.params;
-    const coupon = await Coupon.findOneAndDelete(couponId);
-    if (!coupon) {
-        return next(new ApiError(`No coupon found with the ID ${couponId}`, 404));
+export const deleteCouponService = async (couponId) => {
+    const coupon = await Coupon.findByIdAndDelete(couponId);
+
+    if (coupon) {
+        throw new ApiError('Coupon not found');
     }
 
-    res.status(204).end();
-});
+    return true;
+};

@@ -1,8 +1,15 @@
 export const sanitizeUser = (user) => {
     return {
         id: user._id,
-        name: user.name,
+        displayName: user.displayName,
+        userName: user.userName,
+        fullName: user.fullName,
         email: user.email,
+        secondaryEmail: user.secondaryEmail,
+        phoneNumber: user.phoneNumber,
+        country: user.country,
+        states: user.states,
+        zipCode: user.zipCode,
         profileImage: user.profileImage,
         role: user.role,
         wishlist: user.wishlist,
@@ -35,37 +42,57 @@ export const sanitizeBrand = (brand) => {
         name: brand.name,
         slug: brand.slug,
         category: brand.category,
-        subCategories: brand.subCategories
+        subCategory: brand.subCategory
     };
 };
 
 export const sanitizeProduct = (product) => {
     return {
         id: product._id,
-        title: product.title,
+        name: product.name,
         slug: product.slug,
+        seller: product.seller,
+        description: product.description,
+        sku: product.sku,
+        model: product.model,
+        category: product.category,
+        subCategory: product.subCategory,
+        brand: product.brand,
+        variants: product.variants,
+        price: product.price,
+        priceAfterDiscount: product.priceAfterDiscount,
+        discountPercent: product.discountPercent,
         quantity: product.quantity,
         sold: product.sold,
-        description: product.description,
-        price: product.price,
-        colors: product.colors,
+        availability: product.availability,
+        ratingsAverage: product.ratingsAverage,
+        ratingsQuantity: product.ratingsQuantity,
         imageCover: product.imageCover,
         images: product.images,
-        category: product.category,
-        subCategories: product.subCategories,
-        brand: product.brand,
-        reviews: product.reviews,
-        ratingsAverage: product.ratingsAverage,
-        ratingsQuantity: product.ratingsQuantity
+        features: product.features,
+        specs: product.specs,
+        tags: product.tags,
+        size: product.size,
+        weight: product.weight,
+        shippingInfo: product.shippingInfo,
+        warranty: product.warranty,
+        guarantee: product.guarantee,
+        options: product.options,
+        reviews: product.reviews
     };
 };
 
 export const sanitizeReview = (review) => {
     return {
         id: review._id,
-        title: review.title,
         ratings: review.ratings,
-        user: review.user,
+        feedback: review.feedback,
+        timeElapsed: review.timeElapsed,
+        user: {
+            id: review.user?._id,
+            userName: review.user?.userName,
+            profileImage: review.user?.profileImage
+        },
         product: review.product
     };
 };
@@ -74,11 +101,13 @@ export const sanitizeCart = (cart) => {
     return {
         id: cart._id,
         user: cart.user,
-        cartItems: cart.cartItems || [],
-        totalCartPrice: typeof cart.totalCartPrice === 'number' ? cart.totalCartPrice : 0,
-        totalPriceAfterDiscount: typeof cart.totalPriceAfterDiscount === 'number'
-            ? cart.totalPriceAfterDiscount
-            : cart.totalCartPrice
+        status: cart.status,
+        totalItems: cart.totalItems,
+        totalCartPrice: cart.totalCartPrice,
+        totalPriceAfterDiscount: cart.totalPriceAfterDiscount,
+        savings: cart.savings,
+        coupon: cart.coupon,
+        cartItems: cart.cartItems
     };
 };
 
@@ -86,8 +115,16 @@ export const sanitizeCoupon = (coupon) => {
     return {
         id: coupon._id,
         code: coupon.code,
+        type: coupon.type,
+        discount: coupon.discount,
         expiresAt: coupon.expiresAt,
-        discount: coupon.discount
+        isExpired: coupon.isExpired,
+        minPurchase: coupon.minPurchase,
+        maxDiscount: coupon.maxDiscount,
+        description: coupon.description,
+        createdBy: coupon.createdBy,
+        categories: coupon.categories,
+        products: coupon.products
     };
 };
 
@@ -97,24 +134,14 @@ export const sanitizeOrder = (order) => {
         user: order.user,
         cartItems: order.cartItems,
         shippingAddress: order.shippingAddress,
-        shippingPrice: typeof order.shippingPrice === 'number' ? order.shippingPrice : 0,
+        shippingPrice: order.shippingPrice,
         paymentMethodType: order.paymentMethodType,
-        isPaid: order.isPaid === true,
-        paidAt: order.paidAt ?? null,
-        isDelivered: order.isDelivered === true,
-        deliveredAt: order.deliveredAt ?? null,
-        totalOrderPrice: typeof order.totalOrderPrice === 'number' ? order.totalOrderPrice : 0,
-        totalPriceAfterDiscount: typeof order.totalPriceAfterDiscount === 'number'
-            ? order.totalPriceAfterDiscount
-            : order.totalOrderPrice,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt
-    };
-};
-
-export const sanitizeshippingPrice = (shipPrice) => {
-    return {
-        id: shipPrice._id,
-        shippingPrice: shipPrice.shippingPrice
+        status: order.status,
+        isPaid: order.isPaid,
+        paidAt: order.paidAt,
+        isDelivered: order.isDelivered,
+        deliveredAt: order.deliveredAt,
+        totalOrderPrice: order.totalOrderPrice,
+        totalPriceAfterDiscount: order.totalPriceAfterDiscount
     };
 };

@@ -1,64 +1,76 @@
-import { check, body } from 'express-validator';
+import { param, body } from 'express-validator';
 import slugify from 'slugify';
-import validatorMiddleware from '../middleware/validatorMiddleware.js';
+import validatorMiddleware from '../middlewares/validatorMiddleware.js';
 import ApiError from '../utils/apiError.js';
 import Category from '../models/categoryModel.js';
-
-export const getSubCategoryValidator = [
-    check('id')
-        .isMongoId()
-        .withMessage('Invalid subCategory ID format'),
-
-    validatorMiddleware
-];
+import SubCategory from '../models/subCategoryModel.js';
 
 export const createSubCategoryValidator = [
     body('name')
         .notEmpty()
-        .withMessage('Category ID is required')
-        .notEmpty()
-        .withMessage('SubCategory name is required')
-        .isLength({ min: 3 })
-        .withMessage('SubCategory name must be at least 3 characters long')
-        .isLength({ max: 32 })
-        .withMessage('SubCategory name must be at most 32 characters long')
-        .custom((val, { req }) => {
+        .withMessage('SubCategory name is required.')
+        .isLength({ min: 3, max: 32 })
+        .withMessage('SubCategory name must be between 3 and 32 characters.')
+        .custom(async (val, { req }) => {
             req.body.slug = slugify(val);
+            const subCategory = await SubCategory.findOne({ name: val });
+            if (subCategory) {
+                throw new ApiError('subcategory name already exist.', 400);
+            }
             return true;
         }),
 
-    check('category')
+    body('category')
+        .notEmpty()
+        .withMessage('subCategory must belong to category.')
         .isMongoId()
-        .withMessage('Invalid subCategory ID format')
+        .withMessage('Invalid Category ID format')
         .custom(async (categoryId) => {
             const category = await Category.findById(categoryId);
             if (!category) {
-                throw new ApiError('Category not found');
+                throw new ApiError('Category not found.', 404);
             }
+            return true;
         }),
 
     validatorMiddleware
 ];
 
 export const updateSubCategoryValidator = [
-    check('id')
+    param('subcategoryId')
         .isMongoId()
         .withMessage('Invalid subCategory ID format'),
 
     body('name')
         .optional()
-        .custom((val, { req }) => {
+        .custom(async (val, { req }) => {
             req.body.slug = slugify(val);
+            const subCategory = await SubCategory.findOne({ name: val });
+            if (subCategory) {
+                throw new ApiError('subcategory name already exist.', 400);
+            }
+            return true;
+        }),
+
+    body('category')
+        .optional()
+        .isMongoId()
+        .withMessage('Invalid Category ID format')
+        .custom(async (categoryId) => {
+            const category = await Category.findById(categoryId);
+            if (!category) {
+                throw new ApiError('Category not found.', 404);
+            }
             return true;
         }),
 
     validatorMiddleware
 ];
 
-export const deleteSubCategoryValidator = [
-    check('id')
+export const SubCategoryIDValidator = [
+    param('subcategoryId')
         .isMongoId()
-        .withMessage('Invalid subCategory ID format'),
+        .withMessage('Invalid subCategory ID format.'),
 
     validatorMiddleware
 ];

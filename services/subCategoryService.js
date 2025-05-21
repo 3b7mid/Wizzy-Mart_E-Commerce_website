@@ -1,28 +1,17 @@
-import asycnHandler from 'express-async-handler';
 import ApiFeature from '../utils/apiFeatures.js';
 import ApiError from '../utils/apiError.js';
-import { sanitizeSubCategory } from '../utils/sanitizeData.js';
 import SubCategory from '../models/subCategoryModel.js';
 
-// @desc    Create a subCategory 
-// @route   POST /api/subcategories
-// @access  Private/Admin
-export const createSubCategory = asycnHandler(async (req, res) => {
-    const subcategory = await SubCategory.create(req.body);
+export const createSubCategoryService = async ({ name, slug, category }) => {
+    const subCategory = await SubCategory.create({ name, slug, category });
 
-    res.status(201).json({
-        success: true,
-        data: sanitizeSubCategory(subcategory)
-    });
-});
+    return subCategory;
+};
 
-// @desc    Get all subcategories
-// @route   GET /api/subcategories
-// @access  Public
-export const getSubCategories = asycnHandler(async (req, res) => {
+export const getSubCategoriesService = async (query) => {
     const totalSubCategories = await SubCategory.countDocuments();
 
-    const features = new ApiFeature(SubCategory.find(), req.query)
+    const features = new ApiFeature(SubCategory.find(), query)
         .filter()
         .sort()
         .limitFields()
@@ -31,53 +20,38 @@ export const getSubCategories = asycnHandler(async (req, res) => {
 
     const subCategories = await features.mongooseQuery.exec();
 
-    res.status(200).json({
-        success: true,
+    return {
+        totalSubCategories,
         pagination: features.paginationResult,
-        data: subCategories.map(sanitizeSubCategory)
-    });
-});
+        subCategories
+    };
+};
 
-// @desc    Get a subCategory
-// @route   GET @access  Public
-// route    /api/subcategories/:id
-export const getSubCategory = asycnHandler(async (req, res, next) => {
-    const { id } = req.params;
-
-    const subcategory = await SubCategory.findById(id);
-    
-    if (!subcategory) {
-        return next(new ApiError(`No subcategory found with id: ${id}`, 404));
-    }
-
-    res.status(200).json({
-        success: true,
-        data: sanitizeSubCategory(subcategory)
-    });
-});
-
-// @desc    Update a subCategory
-// @route   PUT /api/subcategories/:id
-// @access  Private/Admin
-export const updateSubCategory = asycnHandler(async (req, res, next) => {
-    const subCategory = await SubCategory.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+export const getSubCategoryService = async (subcategoryId) => {
+    const subCategory = await SubCategory.findById(subcategoryId);
 
     if (!subCategory) {
-        return next(new ApiError(`No subCategory found with this ID ${req.params.id}`, 404));
+        throw new ApiError('SubCategory not found.', 404);
     }
 
-    res.status(200).json({ data: sanitizeSubCategory(subCategory) });
-});
+    return subCategory;
+};
 
-// @desc    Delete a subCategory
-// @route   PUT /api/subcategories/:id
-// @access  Private/Admin
-export const deleteSubCategory = asycnHandler(async (req, res, next) => {
-    const { id } = req.params;
-    const subCategory = await SubCategory.findByIdAndDelete(id);
+export const updateSubCategoryService = async (subcategoryId, updates) => {
+    const subCategory = await SubCategory.findByIdAndUpdate(subcategoryId, updates, { new: true, runValidators: true });
+    if (!subCategory) {
+        throw new ApiError('SubCategory not found.', 404);
+    }
+
+    return subCategory;
+};
+
+export const deleteSubCategoryService = async (subcategoryId) => {
+    const subCategory = await SubCategory.findByIdAndDelete(subcategoryId);
 
     if (!subCategory) {
-        return next(new ApiError(`No subCategory found with this ID ${req.params.id}`, 404));
+        throw new ApiError('SubCategory not found.', 404);
     }
-    res.status(200).end();
-});
+
+    return true;
+};

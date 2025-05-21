@@ -1,20 +1,21 @@
 import express from "express";
-import { protect, allowedTo } from '../services/authService.js';
-import { createCategoryValidator, getCategoryValidator, updateCategoryValidator, deleteCategoryValidator } from "../validators/categoryValidator.js";
-import { uploadSingleImage } from '../middleware/multerMiddleware.js';
-import { resizecategoryImage } from '../middleware/cloudinaryMiddleware.js';
-import { createCategory, getCategories, getCategory, updateCategory, deleteCategory } from "../services/categoryService.js";
+import { protect, allowedTo } from '../middlewares/authMiddleware.js';
+import { createCategoryValidator, CategoryIDValidator, updateCategoryValidator } from "../validators/categoryValidator.js";
+import { uploadSingleImage } from '../middlewares/multerMiddleware.js';
+import { resizeCategoryImage } from '../middlewares/cloudinaryMiddleware.js';
+import { createCategory, getCategories, getCategory, updateCategory, deleteCategory } from "../controllers/categoryController.js";
 
 const router = express.Router();
+
 router.use(protect);
 
 router.route('/')
     .get(getCategories)
-    .post(allowedTo('admin'), uploadSingleImage('categoryImage'), resizecategoryImage, createCategoryValidator, createCategory);
+    .post(allowedTo('admin'), uploadSingleImage('categoryImage'), resizeCategoryImage, createCategoryValidator, createCategory);
 
-router.route('/:id')
-    .get(getCategoryValidator, getCategory)
-    .put(allowedTo('admin'), uploadSingleImage('categoryImage'), resizecategoryImage, updateCategoryValidator, updateCategory)
-    .delete(allowedTo('admin'), deleteCategoryValidator, deleteCategory)
+router.route('/:categoryId')
+    .get(CategoryIDValidator, getCategory)
+    .put(allowedTo('admin'), uploadSingleImage('categoryImage'), resizeCategoryImage, updateCategoryValidator, updateCategory)
+    .delete(allowedTo('admin'), CategoryIDValidator, deleteCategory)
 
 export default router;

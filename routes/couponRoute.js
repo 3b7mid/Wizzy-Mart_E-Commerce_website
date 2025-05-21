@@ -1,7 +1,7 @@
 import express from 'express';
-import { protect, allowedTo } from '../services/authService.js';
-import { getCouponValidator, createCouponValidator, updateCouponValidator, deleteCouponValidator } from '../validators/couponValidator.js';
-import { getCoupons, createCoupon, getCoupon, updateCoupon, deleteCoupon } from '../services/couponService.js';
+import { protect, allowedTo } from '../middlewares/authMiddleware.js';
+import { createCouponValidator, CouponIDValidator, updateCouponValidator } from '../validators/couponValidator.js';
+import { getCoupons, createCoupon, getCoupon, updateCoupon, deleteCoupon } from '../controllers/couponController.js';
 
 const router = express.Router();
 
@@ -12,8 +12,8 @@ router.route('/')
     .post(createCouponValidator, createCoupon);
 
 router.route('/:couponId')
-    .get(getCouponValidator, getCoupon)
+    .get(CouponIDValidator, getCoupon)
     .put(updateCouponValidator, updateCoupon)
-    .delete(deleteCouponValidator, deleteCoupon);
+    .delete(CouponIDValidator, deleteCoupon);
 
 export default router;

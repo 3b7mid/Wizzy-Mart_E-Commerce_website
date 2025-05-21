@@ -1,53 +1,70 @@
-import asyncHandler from "express-async-handler";
+import ApiError from '../utils/apiError.js';
 import User from '../models/userModel.js';
 
-// @desc    Add Address to user addresses list
-// @route   POST /api/addresses
-// @access  Protected/User
-export const addAddress = asyncHandler(async (req, res, next) => {
-    const user = await User.findByIdAndUpdate(
-        req.user._id,
+export const addAddressService = async (userId, addressData) => {
+    const user = await User.findById(userId);
+    
+    if (!user) {
+        throw new ApiError('User not found', 404);
+    }
 
-        { $addToSet: { addresses: req.body } },
+    const updatedUser = await User.findByIdAndUpdate(userId, { $addToSet: { addresses: addressData } }, { new: true, runValidators: true }).populate('addresses');
 
-        { new: true },
+    return updatedUser;
+};
+
+export const getAddressesService = async (userId) => {
+    const user = await User.findById(userId).populate('addresses');
+
+    if (!user) {
+        throw new ApiError('User not found', 404);
+    }
+
+    return user;
+};
+
+export const getAddressService = async (userId, addressId) => {
+    const user = await User.findById(userId).populate('addresses');
+
+    if (!user) {
+        throw new ApiError('User not found', 404);
+    }
+
+    const address = user.addresses.find((address) => address._id.toString() === addressId);
+    
+    if (!address) {
+        throw new ApiError('Address not found', 404);
+    }
+
+    return address;
+};
+
+export const updateAddressService = async (userId, addressId, addressData) => {
+    const updateQuery = {};
+
+    Object.keys(addressData).forEach(key => {
+        updateQuery[`addresses.$.${key}`] = addressData[key];
+    });
+
+    const updatedUser = await User.findOneAndUpdate({ _id: userId, 'addresses._id': addressId }, { $set: updateQuery }, { new: true, runValidators: true });
+
+    if (!updatedUser) {
+        throw new ApiError('Address not found', 404);
+    }
+
+    return updatedUser;
+};
+
+export const removeAddressService = async (userId, addressId) => {
+    const updatedUser = await User.findOneAndUpdate(
+        { _id: userId, 'addresses._id': addressId },
+        { $pull: { addresses: { _id: addressId } } },
+        { new: true, runValidators: true }
     );
 
-    res.status(200).json({
-        status: 'Sucess',
-        message: 'Address added successfully.',
-        data: user.addresses
-    });
-});
+    if (!updatedUser) {
+        throw new ApiError('Address not found.', 404);
+    }
 
-// @desc    remove Address from user addresses list
-// @route   DELETE /api/addresses/:addressId
-// @access  Protected/User
-export const removeAddress = asyncHandler(async (req, res, next) => {
-    const user = await User.findByIdAndUpdate(
-        req.user._id,
-
-        { $pull: { addresses: { _id: req.params.addressId } } },
-
-        { new: true },
-    );
-
-    res.status(200).json({
-        status: 'Sucess',
-        message: 'Address removed successfully.',
-        data: user.addresses,
-    });
-});
-
-// @desc    Get logged user addresses
-// @route   GET /api/addresses
-// @access  Protected/User
-export const getLoggedUserAddresses = asyncHandler(async (req, res, next) => {
-    const user = await User.findById(req.user._id).populate('addresses');
-
-    res.status(200).json({
-        status: 'success',
-        results: user.addresses.length,
-        data: user.addresses
-    });
-});
+    return updatedUser;
+};

@@ -13,6 +13,7 @@ const uploadToCloudinary = (buffer, filename, folder, format = 'jpeg', quality =
                 resource_type: 'image',
                 format,
                 quality,
+                overwrite: true
             },
             (error, result) => {
                 if (error) {
@@ -26,8 +27,33 @@ const uploadToCloudinary = (buffer, filename, folder, format = 'jpeg', quality =
     });
 };
 
-export const resizecategoryImage = asyncHandler(async (req, res, next) => {
-    if (!req.file) return next(); // Skip if no image uploaded
+export const resizeUserImage = asyncHandler(async (req, res, next) => {
+    if (!req.file) return next(); 
+
+    try {
+        const profileImageFileName = `user-${uuidv4()}-profile.jpeg`;
+
+        const buffer = await sharp(req.file.buffer)
+            .resize(500, 500, {
+                fit: sharp.fit.cover,
+                position: sharp.strategy.center
+            })
+            .toFormat('jpeg')
+            .jpeg({ quality: 90 })
+            .toBuffer();
+
+        const result = await uploadToCloudinary(buffer, profileImageFileName, 'users');
+
+        req.body.profileImage = result.secure_url;
+
+        next();
+    } catch (error) {
+        next(new ApiError('Error processing image upload', 500));
+    }
+});
+
+export const resizeCategoryImage = asyncHandler(async (req, res, next) => {
+    if (!req.file) return next(); 
 
     try {
         const categoryImageFileName = `category-${uuidv4()}-.jpeg`;

@@ -1,5 +1,5 @@
 class ApiFeatures {
-    constructor(mongooseQuery, queryString) {
+    constructor(mongooseQuery, queryString = {}) {
         this.mongooseQuery = mongooseQuery;
         this.queryString = queryString;
         this.paginationResult = {};

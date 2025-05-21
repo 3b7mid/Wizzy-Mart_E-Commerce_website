@@ -1,29 +1,63 @@
 import mongoose from "mongoose";
 import bcrypt from 'bcrypt';
 
+export const addressSchema = new mongoose.Schema({
+    type: {
+        type: String,
+        enum: ['billing', 'shipping']
+    },
+    firstName: String,
+    lastName: String,
+    companyName: String,
+    addressLine: String,
+    country: String,
+    state: String,
+    city: String,
+    zipCode: String,
+    email: String,
+    phoneNumber: String,
+}, { _id: true });
+
 const userSchema = new mongoose.Schema(
     {
-        name: {
+        displayName: {
             type: String,
-            trim: true,
+            trim: true
+        },
+        userName: {
+            type: String,
+            trim: true
+        },
+        fullName: {
+            type: String,
+            trim: true
         },
         email: {
             type: String,
-            trim: true,
-            lowercase: true
+            lowercase: true,
+            trim: true
         },
+        secondaryEmail: {
+            type: String,
+            lowercase: true,
+            trim: true
+        },
+        phoneNumber: String,
+        country: String,
+        states: String,
+        city: String,
+        zipCode: String,
         password: {
             type: String,
-            trim: true,
+            trim: true
         },
-        googleId: {
+        profileImage: {
             type: String,
-            unique: true,
-            sparse: true,
+            default: 'https://ui-avatars.com/api/?name=User&background=ddd&color=555'
         },
         role: {
             type: String,
-            enum: ['user', 'admin'],
+            enum: ['user', 'seller', 'admin'],
             default: 'user'
         },
         wishlist: [
@@ -32,29 +66,11 @@ const userSchema = new mongoose.Schema(
                 ref: 'Product'
             }
         ],
-        addresses: [
-            {
-                id: { type: mongoose.Schema.Types.ObjectId },
-                alias: String,
-                details: String,
-                phone: String,
-                city: String,
-                postalCode: String
-            }
-        ],
+        addresses: [addressSchema],
         active: {
             type: Boolean,
             default: true
         },
-        passwordChangedAt: Date,
-        passwordResetCode: {
-            type: String,
-            unique: true,
-            sparse: true,
-            index: true,
-        },
-        passwordResetExpiresAt: Date,
-        passwordResetVerified: Boolean,
         isVerified: Boolean,
         verificationCode: {
             type: String,
@@ -62,12 +78,28 @@ const userSchema = new mongoose.Schema(
             sparse: true,
             index: true,
         },
-        verificationCodeExpiresAt: Date
+        verificationCodeExpiresAt: Date,
+        passwordResetCode: {
+            type: String,
+            unique: true,
+            sparse: true,
+            index: true,
+        },
+        passwordResetExpiresAt: Date,
+        passwordResetVerified: {
+            type: Boolean,
+            default: false,
+        },
+        passwordChangedAt: Date,
+        emailVerificationExpires: {
+            type: Date,
+            default: () => new Date(Date.now() + 24 * 60 * 60 * 1000)
+        }
     },
     { timestamps: true },
 );
 
-userSchema.index({ email: 1 });
+userSchema.index({ emailVerificationExpires: 1 }, { expireAfterSeconds: 0 });
 
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();

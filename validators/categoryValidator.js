@@ -1,54 +1,54 @@
-import { check, body } from 'express-validator';
+import { body, param } from 'express-validator';
 import slugify from 'slugify';
-import validatorMiddleware from '../middleware/validatorMiddleware.js';
-
-export const getCategoryValidator = [
-    check('id')
-        .isMongoId()
-        .withMessage('Invalid category ID format'),
-
-    validatorMiddleware
-];
+import validatorMiddleware from '../middlewares/validatorMiddleware.js';
+import ApiError from '../utils/apiError.js';
+import Category from '../models/categoryModel.js';
 
 export const createCategoryValidator = [
     body('name')
         .notEmpty()
-        .withMessage('Category name is required')
-        .isLength({ min: 3 })
-        .withMessage('Category name must be at least 3 characters long')
-        .isLength({ max: 32 })
-        .withMessage('Category name must be at most 32 characters long')
-        .custom((val, { req }) => {
+        .withMessage('Category name is required.')
+        .isLength({ min: 3, max: 32 })
+        .withMessage('Category name must be between 3 and 32 characters.')
+        .custom(async (val, { req }) => {
             req.body.slug = slugify(val);
+            const category = await Category.findOne({ name: val });
+            if (category) {
+                throw new ApiError('Category name already exists.', 400);
+            }
             return true;
         }),
 
     body('categoryImage')
         .notEmpty()
-        .withMessage('Category image is required'),
+        .withMessage('Category image is required.'),
 
     validatorMiddleware
 ];
 
 export const updateCategoryValidator = [
-    check('id')
+    param('categoryId')
         .isMongoId()
-        .withMessage('Invalid category ID format'),
+        .withMessage('Invalid category ID format.'),
 
     body('name')
         .optional()
-        .custom((val, { req }) => {
+        .custom(async (val, { req }) => {
             req.body.slug = slugify(val);
+            const category = await Category.findOne({ name: val });
+            if (category) {
+                throw new ApiError('Category name already exists.', 400);
+            }
             return true;
         }),
 
     validatorMiddleware
 ];
 
-export const deleteCategoryValidator = [
-    check('id')
+export const CategoryIDValidator = [
+    param('categoryId')
         .isMongoId()
-        .withMessage('Invalid category ID format'),
+        .withMessage('Invalid category ID format.'),
 
     validatorMiddleware
 ];

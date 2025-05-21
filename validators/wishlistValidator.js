@@ -1,45 +1,20 @@
-import { check } from 'express-validator';
-import validatorMiddleware from '../middleware/validatorMiddleware.js';
-import Product from '../models/productModel.js';
-import User from '../models/userModel.js';
+import { body, param } from 'express-validator';
+import validatorMiddleware from '../middlewares/validatorMiddleware.js';
 
 export const addProductToWishlistValidator = [
-    check('productId')
+    body('productId')
         .notEmpty()
-        .withMessage('Product ID is required')
+        .withMessage('Product ID is required.')
         .isMongoId()
-        .withMessage('Invalid product ID format')
-        .custom(async (productId) => {
-            const product = await Product.findById(productId);
-            if (!product) {
-                return Promise.reject(
-                    new Error(`No product found with this ID: ${productId}`)
-                );
-            }
-        }),
+        .withMessage('Invalid product ID format.'),
 
     validatorMiddleware
 ];
 
 export const removeProductFromWishlistValidator = [
-    check('productId')
+    param('productId')
         .isMongoId()
-        .withMessage('Invalid product ID format')
-        .custom(async (productId, { req } ) => {
-            const product = await Product.findById(productId);
-            if (!product) {
-                return Promise.reject(
-                    new Error(`No product found with this ID: ${productId}`)
-                );
-            }
-
-            const user = await User.findById(req.user._id);
-            if (!user || !user.wishlist.includes(productId)) {
-                return Promise.reject(
-                    new Error(`Product with ID: ${productId} is not in your wishlist`)
-                )
-            }
-        }),
+        .withMessage('Invalid product ID format'),
 
     validatorMiddleware
 ];

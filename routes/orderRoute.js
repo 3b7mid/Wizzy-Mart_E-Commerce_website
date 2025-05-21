@@ -1,38 +1,37 @@
 import express from 'express';
-import { protect, allowedTo } from '../services/authService.js';
-import { checkoutSessionValidator, createOrderValidator, deleteOrderValidator, updateOrderValidator, updateShippingPriceValidator } from '../validators/orderValidator.js';
-import { createCashOrder, getAllUserOrders, getAllOrders, deleteOrder, checkoutSession, updateOrderToPaid, updateOrderToDelivered, updateGlobalShippingPrice, updateShippingPrice } from '../services/orderService.js';
+import { protect, allowedTo } from '../middlewares/authMiddleware.js';
+import { createOrderValidator, orderIDValidator } from '../validators/orderValidator.js';
+import { createCashOrder, getOrders, getOrder, updateOrderDetails, deleteOrder, createCheckoutSession, handleWebhookCheckout } from '../controllers/orderController.js';
 
 const router = express.Router();
-
-// router.route('/direct-order')
-//     .post(protect, allowedTo('user'), createOrderValidator, createDirectOrder);
 
 router.route('/:cartId')
     .post(protect, allowedTo('user'), createOrderValidator, createCashOrder);
 
 router.route('/my-orders')
-    .get(protect, allowedTo('user'), getAllUserOrders);
+    .get(protect, allowedTo('user'), getOrders);
+
+router.route('/seller-orders')
+    .get(protect, allowedTo('seller'), getOrders);
 
 router.route('/')
-    .get(protect, allowedTo('admin'), getAllOrders);
+    .get(protect, allowedTo('admin'), getOrders);
 
-router.route('/global-shipping')
-    .put(protect, allowedTo('admin'), updateShippingPriceValidator, updateGlobalShippingPrice);
+router.route('/my-orders/:orderId')
+    .get(protect, allowedTo('user'), orderIDValidator, getOrder);
 
-router.route('/:id/shipping')
-    .put(protect, allowedTo('admin'), updateShippingPriceValidator, updateShippingPrice);
-
-router.route('/:orderId/pay')
-    .put(protect, allowedTo('admin'), updateOrderValidator, updateOrderToPaid);
-
-router.route('/:orderId/deliver')
-    .put(protect, allowedTo('admin'), updateOrderValidator, updateOrderToDelivered)
+router.route('/seller-orders/:orderId')
+    .get(protect, allowedTo('seller'), orderIDValidator, getOrder);
 
 router.route('/:orderId')
-    .delete(protect, allowedTo('user', 'admin'), deleteOrderValidator, deleteOrder);
+    .get(protect, allowedTo('admin'), orderIDValidator, getOrder)
+    .put(protect, allowedTo('admin'), orderIDValidator, updateOrderDetails)
+    .delete(protect, allowedTo('user', 'admin', 'seller'), orderIDValidator, deleteOrder);
 
 router.route('/checkout-session/:cartId')
-    .get(protect, allowedTo('user'), checkoutSessionValidator, checkoutSession);
+    .get(protect, allowedTo('user'), createOrderValidator, createCheckoutSession);
+
+router.route('/webhook-checkout')
+    .post(handleWebhookCheckout);
 
 export default router;
