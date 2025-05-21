@@ -20,27 +20,47 @@ const options = {
     },
     servers: [
       {
-        url: process.env.BASE_URL || 'http://localhost:8000',
-        description: 'Development server'
-      },
-      {
-        url: 'https://wizzy-mart-e-commerce-website.vercel.app',
-        description: 'Production server'
+        url: process.env.NODE_ENV === 'production' 
+          ? 'https://wizzy-mart-e-commerce-website.vercel.app'
+          : 'http://localhost:8000',
+        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
     ]
   },
-  apis: [join(__dirname, '../docs/*.js')], // Use absolute path
+  apis: [join(__dirname, '../docs/*.js')],
 };
 
 const specs = swaggerJsdoc(options);
 
 export const swaggerSetup = (app) => {
   try {
-    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+    // Serve Swagger UI
+    app.use('/api-docs', swaggerUi.serve);
+    
+    // Setup Swagger UI
+    app.get('/api-docs', swaggerUi.setup(specs, {
       explorer: true,
       customCss: '.swagger-ui .topbar { display: none }',
-      customSiteTitle: "Wizzy Mart API Documentation"
+      customSiteTitle: "Wizzy Mart API Documentation",
+      swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        docExpansion: 'none',
+        filter: true,
+        showCommonExtensions: true,
+        syntaxHighlight: {
+          activate: true,
+          theme: 'monokai'
+        }
+      }
     }));
+
+    // Serve Swagger JSON
+    app.get('/api-docs.json', (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.send(specs);
+    });
+
     console.log('Swagger documentation setup successfully');
   } catch (error) {
     console.error('Error setting up Swagger documentation:', error);

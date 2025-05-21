@@ -7,7 +7,7 @@ import helmet from 'helmet';
 import hpp from 'hpp';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
-import xss from 'xss-clean';
+import xss from 'xss';
 import sanitizeMiddleware from './middlewares/sanitizeMiddleware.js';
 import { swaggerSetup } from './config/swagger.js';
 import dbConnection from './config/db.js';
@@ -98,7 +98,12 @@ const helmetConfig = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(helmet(helmetConfig));
-app.use(xss());
+app.use((req, res, next) => {
+    if (req.body) {
+        req.body = JSON.parse(xss(JSON.stringify(req.body)));
+    }
+    next();
+});
 app.use(hpp({
     whitelist: [
         'price',
