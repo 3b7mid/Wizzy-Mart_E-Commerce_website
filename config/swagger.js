@@ -1,5 +1,10 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const options = {
   definition: {
@@ -19,20 +24,25 @@ const options = {
         description: 'Development server'
       },
       {
-        url: 'https://wizzy-mart-e-commerce-website.vercel.app/',
+        url: 'https://wizzy-mart-e-commerce-website.vercel.app',
         description: 'Production server'
       }
     ]
   },
-  apis: ['./docs/*.js'], // Path to the API docs
+  apis: [join(__dirname, '../docs/*.js')], // Use absolute path
 };
 
 const specs = swaggerJsdoc(options);
 
 export const swaggerSetup = (app) => {
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
-    explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: "Wizzy Mart API Documentation"
-  }));
+  try {
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+      explorer: true,
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: "Wizzy Mart API Documentation"
+    }));
+    console.log('Swagger documentation setup successfully');
+  } catch (error) {
+    console.error('Error setting up Swagger documentation:', error);
+  }
 }; 
