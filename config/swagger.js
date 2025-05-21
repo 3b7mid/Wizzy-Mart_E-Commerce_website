@@ -6,6 +6,8 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+const docsPath = join(__dirname, '..', 'docs');
+
 const options = {
   definition: {
     openapi: '3.0.0',
@@ -27,13 +29,17 @@ const options = {
       }
     ]
   },
-  apis: [join(__dirname, '../docs/*.js')],
+  apis: [`${docsPath}/*.js`], // Use absolute path
 };
 
 const specs = swaggerJsdoc(options);
 
 export const swaggerSetup = (app) => {
   try {
+    // Log the specs to verify they're being generated
+    console.log('Swagger specs generated:', Object.keys(specs.paths || {}).length, 'paths found');
+    console.log('Docs path:', docsPath);
+
     // Serve Swagger UI
     app.use('/api-docs', swaggerUi.serve);
     
@@ -64,5 +70,12 @@ export const swaggerSetup = (app) => {
     console.log('Swagger documentation setup successfully');
   } catch (error) {
     console.error('Error setting up Swagger documentation:', error);
+    // Log more detailed error information
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      specs: specs ? 'Specs generated' : 'No specs generated',
+      docsPath
+    });
   }
 }; 
