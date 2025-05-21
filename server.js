@@ -49,7 +49,7 @@ const app = express();
 // CORS Configuration
 const corsOptions = {
     origin: process.env.NODE_ENV === 'production' 
-        ? ['https://wizzy-mart-e-commerce-website.vercel.app', 'http://localhost:8000']
+        ? ['https://wizzy-mart-e-commerce-website.vercel.app/', 'http://localhost:8000']
         : '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
