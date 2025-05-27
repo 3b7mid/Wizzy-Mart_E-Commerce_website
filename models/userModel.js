@@ -90,16 +90,10 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
-        passwordChangedAt: Date,
-        emailVerificationExpires: {
-            type: Date,
-            default: () => new Date(Date.now() + 24 * 60 * 60 * 1000)
-        }
+        passwordChangedAt: Date
     },
     { timestamps: true },
 );
-
-userSchema.index({ emailVerificationExpires: 1 }, { expireAfterSeconds: 0 });
 
 userSchema.pre('save', async function (next) {
     if (!this.isModified('password')) return next();
