@@ -10,6 +10,7 @@ import addressRoute from './addressRoute.js';
 import cartRoute from './cartRoute.js';
 import orderRoute from './orderRoute.js';
 import couponRoute from './couponRoute.js';
+import chatRoute from './chatRoute.js';
 
 const mountRoutes = (app) => {
     app.use('/api/auth', authRoute);
@@ -24,6 +25,7 @@ const mountRoutes = (app) => {
     app.use('/api/carts', cartRoute);
     app.use('/api/coupons', couponRoute);
     app.use('/api/orders', orderRoute);
+    app.use('/api/chat', chatRoute);
 };
 
 export default mountRoutes;

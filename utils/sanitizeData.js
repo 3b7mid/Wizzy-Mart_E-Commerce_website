@@ -145,3 +145,11 @@ export const sanitizeOrder = (order) => {
         totalPriceAfterDiscount: order.totalPriceAfterDiscount
     };
 };
+
+export const sanitizeChatHistory = (history) => {
+    return {
+        id: history._id,
+        message: history.message,
+        reply: history.reply
+    };
+};

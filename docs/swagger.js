@@ -186,6 +186,48 @@
  *         updatedAt:
  *           type: string
  *           format: date-time
+ *     ChatMessage:
+ *       type: object
+ *       required:
+ *         - message
+ *       properties:
+ *         message:
+ *           type: string
+ *           description: The message to send to the chatbot
+ *           minLength: 1
+ *           maxLength: 500
+ *       example:
+ *         message: "What are your best selling smartphones?"
+ *     ChatResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         data:
+ *           type: string
+ *           description: The chatbot's response
+ *           example: "Our best selling smartphones are the iPhone 15 Pro, Samsung Galaxy S24 Ultra, and Google Pixel 8 Pro. Would you like to know more about any of these models?"
+ *     ChatHistory:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         data:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 example: "65f2d5e8c261e6001234abcd"
+ *               message:
+ *                 type: string
+ *                 example: "What are your best selling smartphones?"
+ *               reply:
+ *                 type: string
+ *                 example: "Our best selling smartphones are the iPhone 15 Pro, Samsung Galaxy S24 Ultra, and Google Pixel 8 Pro. Would you like to know more about any of these models?"
  * 
  * securitySchemes:
  *   bearerAuth:
@@ -218,6 +260,8 @@
  *     description: User Address Management
  *   - name: Coupon
  *     description: Coupon Management (Admin only)
+ *   - name: Chat
+ *     description: Chat bot API endpoints
  * 
  * /api/auth/signup:
  *   post:
@@ -4053,4 +4097,73 @@
  *         description: Forbidden (not a user)
  *       404:
  *         description: Cart not found
+ * 
+ * /api/chat:
+ *   post:
+ *     summary: Send a message to the chatbot
+ *     description: |
+ *       Send a message to the chatbot. Authentication is optional:
+ *       - If authenticated, chat history will be saved
+ *       - If not authenticated, chat will work without saving history
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ChatMessage'
+ *     responses:
+ *       200:
+ *         description: Chatbot response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ChatResponse'
+ *       400:
+ *         description: Invalid message format
+ * 
+ * /api/chat/history:
+ *   get:
+ *     summary: Get user's chat history
+ *     description: Get the chat history for the authenticated user. Requires authentication.
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Chat history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ChatHistory'
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       403:
+ *         description: Forbidden - User role not allowed
+ *   delete:
+ *     summary: Clear user's chat history
+ *     description: Clear the chat history for the authenticated user. Requires authentication.
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Chat history cleared successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Chat history cleared successfully"
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       403:
+ *         description: Forbidden - User role not allowed
  */ 

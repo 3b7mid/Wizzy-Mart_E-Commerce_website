@@ -7,12 +7,10 @@ import User from '../models/userModel.js';
 // @desc    Make sure the user is logged in
 export const protect = asyncHandler(async (req, res, next) => {
     let token;
-
-    if (
-        req.headers.authorization &&
-        req.headers.authorization.startsWith("Bearer")
-    ) {
-        token = req.headers.authorization.split(" ")[1];
+    const authHeader = req.headers.authorization;
+    
+    if (authHeader && authHeader.startsWith("Bearer")) {
+        token = authHeader.split(" ")[1];
     }
 
     if (!token) {
@@ -21,7 +19,7 @@ export const protect = asyncHandler(async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
 
-    const currentUser = await User.findById(decoded.userId);
+    const currentUser = await User.findById(decoded.userId).select('-password');
     if (!currentUser) {
         return next(
             new ApiError("No user associated with this token was found.", 404)
@@ -38,6 +36,33 @@ export const protect = asyncHandler(async (req, res, next) => {
     }
 
     req.user = currentUser;
+    next();
+});
+
+// @desc    Optional authentication - allows both authenticated and guest chat with bot
+export const optionalAuth = asyncHandler(async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer')) {
+        req.user = null; 
+        return next();
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+        const currentUser = await User.findById(decoded.userId).select('-password');
+        
+        if (currentUser && currentUser.active) {
+            req.user = currentUser;
+        } else {
+            req.user = null; 
+        }
+    } catch (error) {
+        req.user = null;
+    }
+
     next();
 });
 
