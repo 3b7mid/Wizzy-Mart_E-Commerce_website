@@ -1,19 +1,25 @@
 import xss from 'xss';
 
-const sanitizeObject = (obj) => {
-    if (typeof obj === 'string') {
-        return xss(obj);
-    } else if (Array.isArray(obj)) {
-        return obj.map(item => sanitizeObject(item));
-    } else if (typeof obj === 'object' && obj !== null) {
-        const clean = {};
-        for (const key in obj) {
-            clean[key] = sanitizeObject(obj[key]);
-        }
-        return clean;
-    } else {
-        return obj;
+const sanitizeObject = (input) => {
+    if (typeof input === 'string') {
+        return xss(input);
     }
+
+    if (Array.isArray(input)) {
+        return input.map(item => sanitizeObject(item));
+    }
+
+    if (typeof input === 'object' && input !== null) {
+        const sanitized = {};
+        for (const key in input) {
+            if (Object.prototype.hasOwnProperty.call(input, key)) {
+                sanitized[key] = sanitizeObject(input[key]);
+            }
+        }
+        return sanitized;
+    }
+
+    return input;
 };
 
 const sanitizeMiddleware = (req, res, next) => {
