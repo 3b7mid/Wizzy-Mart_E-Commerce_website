@@ -16,7 +16,7 @@ export const sendVerificationEmail = asyncHandler(async (to, username, verificat
         category: 'Email Verification'
     };
 
-    transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
 });
 
 export const sendPasswordResetEmail = asyncHandler(async (to, username, resetCode) => {
@@ -32,5 +32,5 @@ export const sendPasswordResetEmail = asyncHandler(async (to, username, resetCod
         category: 'Password Reset'
     }
 
-    transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
 });
